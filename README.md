@@ -13,3 +13,26 @@ Tratic
 
 차트에서 계산 가능한 정량적인 보조 지표(atr, adx 등)를 통해 거래의 경향성 및 적합도를 분석 <br>
 거래에 사용된 프레임(분봉)을 평가 기준으로 삼고 상위 프레임(4시간봉, 일봉 등)을 보조 가중치로 사용 
+
+<br><br>
+
+## 구조
+
+### 차트 수집
+<br>
+
+```mermaid
+flowchart TD
+    cfg["구성 설정<br/>(application.yml 등)"] --> collector["차트 수집 <br/>(주기 등록)"]
+    collector -->|"작업 등록"| scheduler["스케줄러<br/>(작업 큐/우선순위)"]
+    scheduler -->|"실행 트리거"| fetcher["캔들 데이터 fetcher<br/>(외부 REST 호출)"]
+    fetcher -->|"성공"| store["캔들 저장"]
+    store --> view["뷰/캐시"]
+    fetcher -->|"실패"| failure["실패 핸들러<br/>(재시도/중지)"]
+    failure -->|"재시도"| scheduler
+    failure -->|"중지"| collector
+```
+
+모든 캔들에 대해 같은 주기 수집으로 처리 <br>
+거래소별 API 제한 스케줄러에서 관리 <br>
+WebSocket 붙이고 싶으면 실시간 데이터는 따로 쓰고 캔들 완성되는 순간에 단일 작업을 스케쥴러에 전달해서 처리<br>
