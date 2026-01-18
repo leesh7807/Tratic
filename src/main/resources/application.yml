@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: tratic
+
+logging:
+  level:
+    root: INFO
+    app.leesh.tratic: DEBUG
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%X{traceId:-}] [%thread] %logger{36} - %msg%n"
+
+
+clients:
+  upbit:
+    base-url: "https://api.upbit.com/v1"
+  binance:
+    base-url: "https://fapi.binance.com"

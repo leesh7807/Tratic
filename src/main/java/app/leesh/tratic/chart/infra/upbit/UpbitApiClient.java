@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
 import app.leesh.tratic.chart.infra.shared.MarketErrorType;
 
 @Component
@@ -18,8 +19,11 @@ public class UpbitApiClient {
         private final RestClient client;
         private final ObjectMapper om;
 
-        public UpbitApiClient(RestClient.Builder builder, ObjectMapper om) {
-                this.client = builder.baseUrl("https://api.upbit.com/v1").build();
+        public UpbitApiClient(RestClient.Builder builder, UpbitProps props, ObjectMapper om) {
+                this.client = builder
+                                .baseUrl(props.baseUrl())
+                                .defaultHeader("X-Client-Name", "upbit")
+                                .build();
                 this.om = om;
         }
 

@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import app.leesh.tratic.chart.domain.ChartSignature;
+import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.infra.shared.MarketErrorType;
 
 @Component
@@ -18,8 +19,11 @@ public class BinanceApiClient {
     private final RestClient client;
     private final ObjectMapper om;
 
-    public BinanceApiClient(RestClient.Builder builder, ObjectMapper om) {
-        this.client = builder.baseUrl("https://fapi.binance.com").build();
+    public BinanceApiClient(RestClient.Builder builder, BinanceProps props, ObjectMapper om) {
+        this.client = builder
+                .baseUrl(props.baseUrl())
+                .defaultHeader("X-Client-Name", "binance")
+                .build();
         this.om = om;
     }
 
