@@ -2,6 +2,38 @@ spring:
   application:
     name: tratic
 
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tratic
+    username: root
+    password: 1234
+  jpa:
+    hibernate:
+      ddl-auto: create
+
+  config:
+    import: optional:file:.env[.properties]
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: [ openid, email, profile ]
+
+          kakao:
+            client-name: Kakao
+            client-id: ${KAKAO_CLIENT_ID}
+            client-secret: ${KAKAO_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: [ openid, profile_nickname ]
+
+        provider:
+          kakao:
+            issuer-uri: https://kauth.kakao.com
+
 logging:
   level:
     root: INFO
