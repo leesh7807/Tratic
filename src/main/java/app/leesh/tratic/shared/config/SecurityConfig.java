@@ -6,27 +6,32 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 import app.leesh.tratic.auth.service.CustomOidcUserService;
+import app.leesh.tratic.shared.logging.TraceIdFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http,
-            CustomOidcUserService customOidcUserService)
-            throws Exception {
+        @Bean
+        SecurityFilterChain securityFilterChain(HttpSecurity http,
+                        CustomOidcUserService customOidcUserService,
+                        TraceIdFilter traceIdFilter)
+                        throws Exception {
 
-        http
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/login**", "/error**").permitAll()
-                        .anyRequest().authenticated())
-                .oauth2Login(oauth -> oauth
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .oidcUserService(customOidcUserService)))
-                .logout(Customizer.withDefaults());
+                http
+                                .addFilterBefore(traceIdFilter, SecurityContextHolderFilter.class)
 
-        return http.build();
-    }
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/", "/login**", "/error**").permitAll()
+                                                .anyRequest().authenticated())
+                                .oauth2Login(oauth -> oauth
+                                                .userInfoEndpoint(userInfo -> userInfo
+                                                                .oidcUserService(customOidcUserService)))
+                                .logout(Customizer.withDefaults());
+
+                return http.build();
+        }
 }
