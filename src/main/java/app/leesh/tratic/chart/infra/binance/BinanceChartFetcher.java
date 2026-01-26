@@ -6,9 +6,12 @@ import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
-import app.leesh.tratic.chart.infra.shared.MarketException;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
 import app.leesh.tratic.chart.service.ChartFetcher;
+import app.leesh.tratic.chart.service.error.ChartFetchException;
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
+import app.leesh.tratic.chart.service.error.ChartFetchFailureMapper;
+import app.leesh.tratic.shared.Result;
 
 @Component
 public class BinanceChartFetcher implements ChartFetcher {
@@ -21,15 +24,19 @@ public class BinanceChartFetcher implements ChartFetcher {
     }
 
     @Override
-    public Chart fetch(ChartFetchRequest req) throws MarketException {
+    public Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req) {
         ChartSignature sig = req.sig();
         String symbol = sig.symbol().value();
         String interval = parseTimeResolution(sig.timeResolution());
         long to = req.asOf().toEpochMilli();
         int limit = (int) req.count();
 
-        BinanceCandleResponse[] res = apiClient.fetchCandlesTo(sig, symbol, interval, to, limit);
-        return mapper.toChart(sig, res);
+        try {
+            BinanceCandleResponse[] res = apiClient.fetchCandlesTo(sig, symbol, interval, to, limit);
+            return Result.ok(mapper.toChart(sig, res));
+        } catch (ChartFetchException ex) {
+            return Result.err(ChartFetchFailureMapper.map(ex, sig.market()));
+        }
     }
 
     @Override

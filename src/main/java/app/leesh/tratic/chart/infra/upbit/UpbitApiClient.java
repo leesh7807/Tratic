@@ -11,9 +11,11 @@ import org.springframework.web.client.RestClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
-import app.leesh.tratic.chart.infra.shared.MarketErrorType;
+import app.leesh.tratic.chart.service.error.ChartFetchErrorType;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class UpbitApiClient {
 
         private final RestClient client;
@@ -85,10 +87,12 @@ public class UpbitApiClient {
                                                 rawMessage = "failed to parse upbit error body";
                                         }
                                         UpbitErrorType upbitType = UpbitErrorType.from(status, rawMessage);
-                                        MarketErrorType marketType = upbitType.toMarketErrorType();
+                                        ChartFetchErrorType errorType = upbitType.toChartFetchErrorType();
 
+                                        log.debug("OUT ERR [upbit] status={} uri={} rawMessage={}", status,
+                                                        req.getURI(), rawMessage);
                                         // retry-after 계산 없이 상위 정책 폴백에 맡기는 상태
-                                        throw marketType.exception(status, rawMessage, null);
+                                        throw errorType.exception(null);
                                 })
                                 .body(UpbitCandleResponse[].class);
         }

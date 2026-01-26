@@ -11,9 +11,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
-import app.leesh.tratic.chart.infra.shared.MarketErrorType;
+import app.leesh.tratic.chart.service.error.ChartFetchErrorType;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class BinanceApiClient {
 
     private final RestClient client;
@@ -51,8 +53,10 @@ public class BinanceApiClient {
                         rawMessage = "failed to parse binance error body";
                     }
                     BinanceErrorType binanceType = BinanceErrorType.from(status, rawMessage);
-                    MarketErrorType marketType = binanceType.toMarketErrorType();
-                    throw marketType.exception(status, rawMessage, null);
+                    ChartFetchErrorType errorType = binanceType.toChartFetchErrorType();
+                    log.debug("OUT ERR [binance] status={} uri={} rawMessage={}", status, req.getURI(), rawMessage);
+                    // retry-after 계산 없이 상위 정책 폴백에 맡기는 상태
+                    throw errorType.exception(null);
                 })
                 .body(BinanceCandleResponse[].class);
     }

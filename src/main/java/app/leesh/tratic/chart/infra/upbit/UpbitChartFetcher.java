@@ -6,9 +6,12 @@ import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
-import app.leesh.tratic.chart.infra.shared.MarketException;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
 import app.leesh.tratic.chart.service.ChartFetcher;
+import app.leesh.tratic.chart.service.error.ChartFetchException;
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
+import app.leesh.tratic.chart.service.error.ChartFetchFailureMapper;
+import app.leesh.tratic.shared.Result;
 
 @Component
 public class UpbitChartFetcher implements ChartFetcher {
@@ -21,21 +24,25 @@ public class UpbitChartFetcher implements ChartFetcher {
     }
 
     @Override
-    public Chart fetch(ChartFetchRequest req) throws MarketException {
+    public Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req) {
         ChartSignature sig = req.sig();
         TimeResolution timeResolution = sig.timeResolution();
         String market = sig.symbol().value();
         String to = req.asOf().toString();
         long count = req.count();
 
-        UpbitCandleResponse[] res;
-        if (isMinutes(timeResolution)) {
-            long unit = parseMinuteUnit(timeResolution);
-            res = apiClient.fetchMinuteCandles(unit, market, to, count);
-        } else {
-            res = apiClient.fetchDayCandles(market, to, count);
+        try {
+            UpbitCandleResponse[] res;
+            if (isMinutes(timeResolution)) {
+                long unit = parseMinuteUnit(timeResolution);
+                res = apiClient.fetchMinuteCandles(unit, market, to, count);
+            } else {
+                res = apiClient.fetchDayCandles(market, to, count);
+            }
+            return Result.ok(mapper.toChart(sig, res));
+        } catch (ChartFetchException ex) {
+            return Result.err(ChartFetchFailureMapper.map(ex, sig.market()));
         }
-        return mapper.toChart(sig, res);
     }
 
     @Override

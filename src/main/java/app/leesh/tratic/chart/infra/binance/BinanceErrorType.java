@@ -1,6 +1,6 @@
 package app.leesh.tratic.chart.infra.binance;
 
-import app.leesh.tratic.chart.infra.shared.MarketErrorType;
+import app.leesh.tratic.chart.service.error.ChartFetchErrorType;
 
 public enum BinanceErrorType {
 
@@ -35,13 +35,13 @@ public enum BinanceErrorType {
     /**
      * Binance -> Market 공통 에러로 변환
      */
-    public MarketErrorType toMarketErrorType() {
+    public ChartFetchErrorType toChartFetchErrorType() {
         return switch (this) {
-            case TEMPORARY -> MarketErrorType.TEMPORARY;
-            case RATE_LIMITED -> MarketErrorType.RATE_LIMITED;
-            case INVALID_REQUEST -> MarketErrorType.INVALID_REQUEST;
-            case UNAUTHORIZED -> MarketErrorType.UNAUTHORIZED;
-            case NOT_FOUND -> MarketErrorType.NOT_FOUND;
+            case TEMPORARY -> ChartFetchErrorType.TEMPORARY;
+            case RATE_LIMITED -> ChartFetchErrorType.RATE_LIMITED;
+            case INVALID_REQUEST -> ChartFetchErrorType.INVALID_REQUEST;
+            case UNAUTHORIZED -> ChartFetchErrorType.UNAUTHORIZED;
+            case NOT_FOUND -> ChartFetchErrorType.NOT_FOUND;
         };
     }
 }
