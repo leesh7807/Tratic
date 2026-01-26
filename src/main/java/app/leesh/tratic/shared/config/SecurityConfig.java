@@ -10,6 +10,7 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 import app.leesh.tratic.auth.service.CustomOidcUserService;
 import app.leesh.tratic.shared.logging.TraceIdFilter;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -25,12 +26,25 @@ public class SecurityConfig {
                                 .addFilterBefore(traceIdFilter, SecurityContextHolderFilter.class)
 
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/", "/login**", "/error**").permitAll()
+                                                .requestMatchers(
+                                                                "/",
+                                                                "/index.html",
+                                                                "/static/**",
+                                                                "/favicon.ico",
+                                                                "/error**")
+                                                .permitAll()
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth -> oauth
                                                 .userInfoEndpoint(userInfo -> userInfo
                                                                 .oidcUserService(customOidcUserService)))
-                                .logout(Customizer.withDefaults());
+                                .logout(Customizer.withDefaults())
+                                .exceptionHandling(ex -> ex
+                                                .authenticationEntryPoint(
+                                                                (request, response, accessDeniedException) -> response
+                                                                                .sendError(HttpServletResponse.SC_NOT_FOUND))
+                                                .accessDeniedHandler(
+                                                                (request, response, accessDeniedException) -> response
+                                                                                .sendError(HttpServletResponse.SC_NOT_FOUND)));
 
                 return http.build();
         }
