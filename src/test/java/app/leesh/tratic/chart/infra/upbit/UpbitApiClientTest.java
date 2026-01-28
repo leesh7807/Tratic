@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
+import app.leesh.tratic.shared.Result;
+
 @SpringBootTest
 class UpbitApiClientTest {
 
@@ -16,16 +19,20 @@ class UpbitApiClientTest {
     @Tag("external")
     @Test
     void fetchMinuteCandles_hitsUpbitApi() {
-        UpbitCandleResponse[] res = client.fetchMinuteCandles(1, "KRW-BTC", "2024-01-01T00:00:00Z", 2);
-
-        assertTrue(res.length > 0);
+        Result<UpbitCandleResponse[], ChartFetchFailure> res = client.fetchMinuteCandles(1, "KRW-BTC",
+                "2024-01-01T00:00:00Z", 2);
+        assertTrue(res instanceof Result.Ok);
+        UpbitCandleResponse[] body = ((Result.Ok<UpbitCandleResponse[], ChartFetchFailure>) res).value();
+        assertTrue(body.length > 0);
     }
 
     @Tag("external")
     @Test
     void fetchDayCandles_hitsUpbitApi() {
-        UpbitCandleResponse[] res = client.fetchDayCandles("KRW-BTC", "2024-01-01T00:00:00Z", 2);
-
-        assertTrue(res.length > 0);
+        Result<UpbitCandleResponse[], ChartFetchFailure> res = client.fetchDayCandles("KRW-BTC",
+                "2024-01-01T00:00:00Z", 2);
+        assertTrue(res instanceof Result.Ok);
+        UpbitCandleResponse[] body = ((Result.Ok<UpbitCandleResponse[], ChartFetchFailure>) res).value();
+        assertTrue(body.length > 0);
     }
 }

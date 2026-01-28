@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
+import app.leesh.tratic.shared.Result;
 
 class ChartFetcherResolverTest {
 
@@ -46,7 +48,7 @@ class ChartFetcherResolverTest {
         }
 
         @Override
-        public Chart fetch(ChartFetchRequest req) {
+        public Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req) {
             throw new UnsupportedOperationException("not used in resolver test");
         }
 

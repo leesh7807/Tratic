@@ -47,14 +47,14 @@
 
 ## 3) 차트 수집 관련 구조
 - `ChartService` 역할과 public 메서드 시그니처:
-  - 역할: `ChartFetcherResolver`로 마켓별 fetcher를 선택하고, `MarketException`을 `ChartFetchFailure`로 매핑해 `Result`로 반환.
+  - 역할: `ChartFetcherResolver`로 마켓별 fetcher를 선택하고, fetcher가 반환한 `Result`를 그대로 반환.
   - 시그니처: `public Result<Chart, ChartFetchFailure> collectChart(ChartFetchRequest req)`
 - `ChartFetcher / Resolver` 구조:
   - `ChartFetcherResolver`는 `List<ChartFetcher>`를 받아 `Market`별로 매핑하고, 중복/미지원 마켓 시 `IllegalArgumentException` 발생.
-  - `ChartFetcher`는 `Chart fetch(ChartFetchRequest req)` 및 `Market market()` 제공.
+  - `ChartFetcher`는 `Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req)` 및 `Market market()` 제공.
 - 루프 호출 / pagination / rate-limit 관련 코드 존재 여부:
   - `UpbitChartFetcher`/`BinanceChartFetcher`는 각 1회 API 호출만 수행함(루프/페이지네이션 코드 없음).
-  - `MarketErrorType.RATE_LIMITED` 및 `ChartFetchFailure.RateLimited`가 존재하나, 재시도/대기 로직은 없음.
+  - `ChartFetchFailure.RateLimited`가 존재하나, 재시도/대기 로직은 없음.
 - 마켓별 제약이 코드에 직접 등장하는 위치:
   - `UpbitApiClient` 주석에 `count <= 200`, 분 단위 `unit`(1,3,5,10,15,30,60,240) 목록 명시.
   - `UpbitChartFetcher.parseMinuteUnit`에서 분 단위 매핑(M1/M3/M5/M15/M30/H1/H4).
@@ -68,10 +68,9 @@
 ## 5) 실패/에러 모델
 - `shared.Result<T,E>` 존재(Ok/Err sealed interface).
 - 차트 수집 실패 모델: `chart.service.ChartFetchFailure`(Temporary/RateLimited/InvalidRequest/Unauthorized/NotFound).
-- 마켓 공통 예외: `chart.infra.shared.MarketException`, `MarketErrorType`.
 - 에러 흐름:
-  - `UpbitApiClient`/`BinanceApiClient`에서 HTTP 에러를 `MarketException`으로 변환.
-  - `ChartService.collectChart`에서 `MarketException`을 잡아 `ChartFetchFailure`로 매핑 후 `Result.err` 반환.
+  - `UpbitApiClient`/`BinanceApiClient`에서 HTTP 에러를 `ChartFetchFailure`로 변환해 `Result.err` 반환.
+  - `ChartService.collectChart`는 fetcher의 `Result`를 그대로 반환.
 
 ## 6) 테스트 및 미완성 흔적
 - 테스트 존재:

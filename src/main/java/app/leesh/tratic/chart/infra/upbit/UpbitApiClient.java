@@ -2,7 +2,6 @@ package app.leesh.tratic.chart.infra.upbit;
 
 import java.io.IOException;
 
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
@@ -10,10 +9,14 @@ import org.springframework.web.client.RestClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
-import app.leesh.tratic.chart.infra.shared.MarketErrorType;
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
+import app.leesh.tratic.shared.Result;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class UpbitApiClient {
 
         private final RestClient client;
@@ -35,7 +38,8 @@ public class UpbitApiClient {
          * @param to     조회 기간의 종료 시각
          * @param count  캔들 개수 <= 200
          */
-        public UpbitCandleResponse[] fetchMinuteCandles(long unit, String market, String to, long count) {
+        public Result<UpbitCandleResponse[], ChartFetchFailure> fetchMinuteCandles(long unit, String market, String to,
+                        long count) {
                 return fetchCandles("/candles/minutes/{unit}", market, to, count, unit);
         }
 
@@ -46,11 +50,12 @@ public class UpbitApiClient {
          * @param to     조회 기간의 종료 시각
          * @param count  캔들 개수 <= 200
          */
-        public UpbitCandleResponse[] fetchDayCandles(String market, String to, long count) {
+        public Result<UpbitCandleResponse[], ChartFetchFailure> fetchDayCandles(String market, String to, long count) {
                 return fetchCandles("/candles/days", market, to, count, null);
         }
 
-        private UpbitCandleResponse[] fetchCandles(@NonNull String path, String market, String to, long count,
+        private Result<UpbitCandleResponse[], ChartFetchFailure> fetchCandles(@NonNull String path, String market,
+                        String to, long count,
                         Long unit) {
                 return client.get()
                                 .uri(uriBuilder -> {
@@ -71,9 +76,13 @@ public class UpbitApiClient {
                                                         .build();
                                 })
                                 .accept(MediaType.APPLICATION_JSON)
-                                .retrieve()
-                                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                                .exchange((req, res) -> {
                                         int status = res.getStatusCode().value();
+                                        if (!res.getStatusCode().isError()) {
+                                                UpbitCandleResponse[] body = om.readValue(res.getBody(),
+                                                                UpbitCandleResponse[].class);
+                                                return Result.ok(body);
+                                        }
                                         String rawMessage = null;
                                         try {
                                                 UpbitErrorEnvelope env = om.readValue(res.getBody(),
@@ -85,12 +94,13 @@ public class UpbitApiClient {
                                                 rawMessage = "failed to parse upbit error body";
                                         }
                                         UpbitErrorType upbitType = UpbitErrorType.from(status, rawMessage);
-                                        MarketErrorType marketType = upbitType.toMarketErrorType();
+                                        ChartFetchFailure failure = upbitType.toFailure(Market.UPBIT, null);
 
+                                        log.debug("OUT ERR [upbit] status={} uri={} rawMessage={}", status,
+                                                        req.getURI(), rawMessage);
                                         // retry-after 계산 없이 상위 정책 폴백에 맡기는 상태
-                                        throw marketType.exception(status, rawMessage, null);
-                                })
-                                .body(UpbitCandleResponse[].class);
+                                        return Result.err(failure);
+                                });
         }
 
         // Upbit 에러 바디 파싱용 DTO

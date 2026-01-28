@@ -16,7 +16,6 @@ import app.leesh.tratic.shared.logging.OutboundLoggingInterceptor;
 @Configuration
 public class CommonRestClientConfig {
 
-        @SuppressWarnings("null")
         @Bean
         public RestClient.Builder commonRestClientBuilder(
                         @NonNull OutboundLoggingInterceptor outboundLoggingInterceptor) {

@@ -1,6 +1,9 @@
 package app.leesh.tratic.chart.infra.binance;
 
-import app.leesh.tratic.chart.infra.shared.MarketErrorType;
+import java.time.Duration;
+
+import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 
 public enum BinanceErrorType {
 
@@ -35,13 +38,13 @@ public enum BinanceErrorType {
     /**
      * Binance -> Market 공통 에러로 변환
      */
-    public MarketErrorType toMarketErrorType() {
+    public ChartFetchFailure toFailure(Market market, Duration retryAfter) {
         return switch (this) {
-            case TEMPORARY -> MarketErrorType.TEMPORARY;
-            case RATE_LIMITED -> MarketErrorType.RATE_LIMITED;
-            case INVALID_REQUEST -> MarketErrorType.INVALID_REQUEST;
-            case UNAUTHORIZED -> MarketErrorType.UNAUTHORIZED;
-            case NOT_FOUND -> MarketErrorType.NOT_FOUND;
+            case TEMPORARY -> new ChartFetchFailure.Temporary(market);
+            case RATE_LIMITED -> new ChartFetchFailure.RateLimited(market, retryAfter);
+            case INVALID_REQUEST -> new ChartFetchFailure.InvalidRequest(market);
+            case UNAUTHORIZED -> new ChartFetchFailure.Unauthorized(market);
+            case NOT_FOUND -> new ChartFetchFailure.NotFound(market);
         };
     }
 }
