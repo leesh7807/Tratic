@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
@@ -19,8 +18,7 @@ import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.Symbol;
 import app.leesh.tratic.chart.domain.TimeResolution;
-import app.leesh.tratic.chart.infra.shared.MarketErrorType;
-import app.leesh.tratic.chart.infra.shared.MarketException;
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +40,7 @@ public class ChartServiceTest {
         Chart expectedChart = mock(Chart.class);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
-        when(fetcher.fetch(req)).thenReturn(expectedChart);
+        when(fetcher.fetch(req)).thenReturn(Result.ok(expectedChart));
 
         Result<Chart, ChartFetchFailure> result = service.collectChart(req);
 
@@ -57,7 +55,7 @@ public class ChartServiceTest {
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
-        when(fetcher.fetch(req)).thenThrow(stubMarketException(MarketErrorType.TEMPORARY, 500, null, null));
+        when(fetcher.fetch(req)).thenReturn(Result.err(new ChartFetchFailure.Temporary(Market.UPBIT)));
 
         Result<Chart, ChartFetchFailure> result = service.collectChart(req);
 
@@ -72,8 +70,8 @@ public class ChartServiceTest {
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
-        when(fetcher.fetch(req)).thenThrow(stubMarketException(MarketErrorType.RATE_LIMITED, 429, "rate limited",
-                Duration.ofSeconds(5)));
+        when(fetcher.fetch(req))
+                .thenReturn(Result.err(new ChartFetchFailure.RateLimited(Market.UPBIT, java.time.Duration.ofSeconds(5))));
 
         Result<Chart, ChartFetchFailure> result = service.collectChart(req);
 
@@ -88,8 +86,7 @@ public class ChartServiceTest {
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
-        when(fetcher.fetch(req)).thenThrow(stubMarketException(MarketErrorType.INVALID_REQUEST, 400, "bad request",
-                null));
+        when(fetcher.fetch(req)).thenReturn(Result.err(new ChartFetchFailure.InvalidRequest(Market.UPBIT)));
 
         Result<Chart, ChartFetchFailure> result = service.collectChart(req);
 
@@ -104,8 +101,7 @@ public class ChartServiceTest {
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
-        when(fetcher.fetch(req)).thenThrow(stubMarketException(MarketErrorType.UNAUTHORIZED, 401, "unauthorized",
-                null));
+        when(fetcher.fetch(req)).thenReturn(Result.err(new ChartFetchFailure.Unauthorized(Market.UPBIT)));
 
         Result<Chart, ChartFetchFailure> result = service.collectChart(req);
 
@@ -120,7 +116,7 @@ public class ChartServiceTest {
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
-        when(fetcher.fetch(req)).thenThrow(stubMarketException(MarketErrorType.NOT_FOUND, 404, "not found", null));
+        when(fetcher.fetch(req)).thenReturn(Result.err(new ChartFetchFailure.NotFound(Market.UPBIT)));
 
         Result<Chart, ChartFetchFailure> result = service.collectChart(req);
 
@@ -129,8 +125,4 @@ public class ChartServiceTest {
         assertInstanceOf(ChartFetchFailure.NotFound.class, err.error());
     }
 
-    private MarketException stubMarketException(MarketErrorType type, int httpStatus, String rawMessage,
-            Duration retryAfter) {
-        return new MarketException(type, httpStatus, rawMessage, retryAfter);
-    }
 }

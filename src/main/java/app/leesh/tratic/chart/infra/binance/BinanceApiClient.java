@@ -2,18 +2,21 @@ package app.leesh.tratic.chart.infra.binance;
 
 import java.io.IOException;
 
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
-import app.leesh.tratic.chart.infra.shared.MarketErrorType;
+import app.leesh.tratic.chart.service.error.ChartFetchFailure;
+import app.leesh.tratic.shared.Result;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class BinanceApiClient {
 
     private final RestClient client;
@@ -27,8 +30,8 @@ public class BinanceApiClient {
         this.om = om;
     }
 
-    public BinanceCandleResponse[] fetchCandlesTo(ChartSignature sig, String symbol, String interval, long to,
-            int limit) {
+    public Result<BinanceCandleResponse[], ChartFetchFailure> fetchCandlesTo(ChartSignature sig, String symbol,
+            String interval, long to, int limit) {
         return client.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/fapi/v1/klines")
@@ -38,9 +41,12 @@ public class BinanceApiClient {
                         .queryParam("limit", limit)
                         .build())
                 .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, (req, res) -> {
+                .exchange((req, res) -> {
                     int status = res.getStatusCode().value();
+                    if (!res.getStatusCode().isError()) {
+                        BinanceCandleResponse[] body = om.readValue(res.getBody(), BinanceCandleResponse[].class);
+                        return Result.ok(body);
+                    }
                     String rawMessage = null;
                     try {
                         BinanceErrorEnvelope env = om.readValue(res.getBody(), BinanceErrorEnvelope.class);
@@ -51,10 +57,11 @@ public class BinanceApiClient {
                         rawMessage = "failed to parse binance error body";
                     }
                     BinanceErrorType binanceType = BinanceErrorType.from(status, rawMessage);
-                    MarketErrorType marketType = binanceType.toMarketErrorType();
-                    throw marketType.exception(status, rawMessage, null);
-                })
-                .body(BinanceCandleResponse[].class);
+                    ChartFetchFailure failure = binanceType.toFailure(Market.BINANCE, null);
+                    log.debug("OUT ERR [binance] status={} uri={} rawMessage={}", status, req.getURI(), rawMessage);
+                    // retry-after 계산 없이 상위 정책 폴백에 맡기는 상태
+                    return Result.err(failure);
+                });
     }
 
     public record BinanceErrorEnvelope(int code, String msg) {
