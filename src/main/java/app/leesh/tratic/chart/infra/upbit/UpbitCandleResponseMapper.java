@@ -15,7 +15,13 @@ import app.leesh.tratic.chart.domain.ChartSignature;
 @Component
 final class UpbitCandleResponseMapper {
     Chart toChart(ChartSignature sig, UpbitCandleResponse[] res) {
-        List<Candle> candles = Arrays.stream(res)
+        List<Candle> candles = toCandles(res);
+
+        return Chart.of(sig, CandleSeries.ofSorted(candles));
+    }
+
+    List<Candle> toCandles(UpbitCandleResponse[] res) {
+        return Arrays.stream(res)
                 .map(r -> new Candle(
                         parseUtcInstant(r.candleDateTimeUtc()),
                         r.openingPrice(),
@@ -25,8 +31,6 @@ final class UpbitCandleResponseMapper {
                         r.candleAccTradeVolume()))
                 .sorted(Comparator.comparing(Candle::time))
                 .toList();
-
-        return Chart.of(sig, CandleSeries.ofSorted(candles));
     }
 
     private Instant parseUtcInstant(String utc) {
