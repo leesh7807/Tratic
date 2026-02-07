@@ -16,7 +16,13 @@ import app.leesh.tratic.chart.domain.ChartSignature;
 final class BinanceCandleResponseMapper {
 
     public Chart toChart(ChartSignature sig, BinanceCandleResponse[] res) {
-        List<Candle> candles = Arrays.stream(res)
+        List<Candle> candles = toCandles(res);
+
+        return Chart.of(sig, CandleSeries.ofSorted(candles));
+    }
+
+    List<Candle> toCandles(BinanceCandleResponse[] res) {
+        return Arrays.stream(res)
                 .map(r -> new Candle(
                         Instant.ofEpochMilli(r.openTime()),
                         r.open(),
@@ -26,8 +32,6 @@ final class BinanceCandleResponseMapper {
                         r.volume()))
                 .sorted(Comparator.comparing(Candle::time))
                 .toList();
-
-        return Chart.of(sig, CandleSeries.ofSorted(candles));
     }
 
 }

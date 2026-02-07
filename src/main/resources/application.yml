@@ -48,3 +48,4 @@ clients:
     base-url: "https://api.upbit.com/v1"
   binance:
     base-url: "https://fapi.binance.com"
+    max-candles-per-call: 1500

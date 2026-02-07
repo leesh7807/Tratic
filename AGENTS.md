@@ -53,12 +53,16 @@
   - `ChartFetcherResolver`는 `List<ChartFetcher>`를 받아 `Market`별로 매핑하고, 중복/미지원 마켓 시 `IllegalArgumentException` 발생.
   - `ChartFetcher`는 `Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req)` 및 `Market market()` 제공.
 - 루프 호출 / pagination / rate-limit 관련 코드 존재 여부:
-  - `UpbitChartFetcher`/`BinanceChartFetcher`는 각 1회 API 호출만 수행함(루프/페이지네이션 코드 없음).
+  - `UpbitChartFetcher`는 요청 count를 200 단위로 분할해 루프 호출함.
+  - `BinanceChartFetcher`는 `clients.binance.max-candles-per-call` 값을 상한으로 분할해 루프 호출함.
+  - `BinanceChartFetcher`는 배치별 `endTime`을 `earliestReturnedCandle.openTime - resolutionDuration`으로 갱신하며, 빈 배열(`[]`) 응답 시 조기 종료함.
+  - `BinanceChartFetcher`는 배치 병합 후 `time` 기준 중복 제거를 수행해 도메인(`CandleSeries`) 중복 검증 실패를 방어함.
   - `ChartFetchFailure.RateLimited`가 존재하나, 재시도/대기 로직은 없음.
 - 마켓별 제약이 코드에 직접 등장하는 위치:
   - `UpbitApiClient` 주석에 `count <= 200`, 분 단위 `unit`(1,3,5,10,15,30,60,240) 목록 명시.
   - `UpbitChartFetcher.parseMinuteUnit`에서 분 단위 매핑(M1/M3/M5/M15/M30/H1/H4).
   - `BinanceChartFetcher.parseTimeResolution`에서 interval 매핑("1m", "3m", …, "1d").
+  - `application.yml`의 `clients.binance.max-candles-per-call` 및 `ClientPropsConfig.BinanceProps.maxCandlesPerCall`로 Binance 1회 호출 상한을 주입받음.
 
 ## 4) 분석 관련 구조
 - 분석 도메인/패키지/클래스/컨트롤러/유스케이스가 `src/main/java`에 존재하지 않음.
@@ -76,7 +80,9 @@
 - 테스트 존재:
   - 차트 도메인: `ChartTest`, `CandleTest`, `CandleSeriesTest`
   - 차트 서비스: `ChartServiceTest`, `ChartFetcherResolverTest`
+  - 차트 fetcher 분할/페이지네이션: `UpbitChartFetcherSplitTest`, `BinanceChartFetcherPaginationTest`
   - 외부 API 호출 테스트: `UpbitApiClientTest`, `BinanceApiClientTest` (@Tag("external"))
+    - `BinanceApiClientTest`에 1회 한도 초과 요청을 `BinanceChartFetcher`로 검증하는 외부 테스트 포함.
   - 컨텍스트 로드: `TraticApplicationTests`
 - 테스트가 없는 영역(테스트 파일 부재 기준):
   - `auth` 패키지 전반(컨트롤러/서비스/도메인/infra) 테스트 없음.

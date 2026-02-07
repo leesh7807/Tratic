@@ -16,6 +16,6 @@ public class ClientPropsConfig {
     }
 
     @ConfigurationProperties(prefix = "clients.binance")
-    public record BinanceProps(@NonNull String baseUrl) {
+    public record BinanceProps(@NonNull String baseUrl, int maxCandlesPerCall) {
     }
 }

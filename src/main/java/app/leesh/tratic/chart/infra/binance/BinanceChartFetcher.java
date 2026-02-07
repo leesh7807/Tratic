@@ -1,11 +1,22 @@
 package app.leesh.tratic.chart.infra.binance;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.stereotype.Component;
 
+import app.leesh.tratic.chart.domain.Candle;
+import app.leesh.tratic.chart.domain.CandleSeries;
 import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
+import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
 import app.leesh.tratic.chart.service.ChartFetcher;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
@@ -15,10 +26,12 @@ import app.leesh.tratic.shared.Result;
 public class BinanceChartFetcher implements ChartFetcher {
     private final BinanceApiClient apiClient;
     private final BinanceCandleResponseMapper mapper;
+    private final int maxCandlesPerCall;
 
-    public BinanceChartFetcher(BinanceApiClient apiClient, BinanceCandleResponseMapper mapper) {
+    public BinanceChartFetcher(BinanceApiClient apiClient, BinanceCandleResponseMapper mapper, BinanceProps props) {
         this.apiClient = apiClient;
         this.mapper = mapper;
+        this.maxCandlesPerCall = props.maxCandlesPerCall();
     }
 
     @Override
@@ -26,12 +39,49 @@ public class BinanceChartFetcher implements ChartFetcher {
         ChartSignature sig = req.sig();
         String symbol = sig.symbol().value();
         String interval = parseTimeResolution(sig.timeResolution());
+        Duration step = sig.timeResolution().toDuration();
+        long remaining = req.count();
         long to = req.asOf().toEpochMilli();
-        int limit = (int) req.count();
 
-        Result<BinanceCandleResponse[], ChartFetchFailure> res = apiClient.fetchCandlesTo(sig, symbol, interval, to,
-                limit);
-        return res.map(body -> mapper.toChart(sig, body));
+        List<Candle> candles = new ArrayList<>();
+        while (remaining > 0) {
+            int limit = (int) Math.min(maxCandlesPerCall, remaining);
+            Result<BinanceCandleResponse[], ChartFetchFailure> res = apiClient.fetchCandlesTo(sig, symbol, interval,
+                    to, limit);
+
+            BinanceCandleResponse[] body;
+            if (res instanceof Result.Ok<BinanceCandleResponse[], ChartFetchFailure> ok) {
+                body = ok.value();
+            } else {
+                var err = (Result.Err<BinanceCandleResponse[], ChartFetchFailure>) res;
+                return Result.err(err.error());
+            }
+
+            List<Candle> batch = mapper.toCandles(body);
+            candles.addAll(batch);
+
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            Instant earliest = batch.get(0).time();
+            to = earliest.minus(step).toEpochMilli();
+            remaining -= batch.size();
+        }
+
+        List<Candle> sorted = candles.stream()
+                .sorted(Comparator.comparing(Candle::time))
+                .toList();
+
+        Set<Instant> seen = new HashSet<>();
+        List<Candle> deduplicated = new ArrayList<>(sorted.size());
+        for (Candle candle : sorted) {
+            if (seen.add(candle.time())) {
+                deduplicated.add(candle);
+            }
+        }
+
+        return Result.ok(Chart.of(sig, CandleSeries.ofSorted(deduplicated)));
     }
 
     @Override
