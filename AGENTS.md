@@ -53,7 +53,10 @@
   - `ChartFetcherResolver`는 `List<ChartFetcher>`를 받아 `Market`별로 매핑하고, 중복/미지원 마켓 시 `IllegalArgumentException` 발생.
   - `ChartFetcher`는 `Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req)` 및 `Market market()` 제공.
 - 루프 호출 / pagination / rate-limit 관련 코드 존재 여부:
-  - `UpbitChartFetcher`는 요청 count를 200 단위로 분할해 루프 호출함.
+  - `UpbitChartFetcher`는 요청 수량(`remaining`)이 0이 될 때까지 반복 호출하며 페이지네이션을 수행함.
+  - 페이지 크기는 고정 상수(200)가 아니라 `clients.upbit.max-candle-count-per-request` 설정값 사용.
+  - 각 페이지의 가장 이른 캔들 시각에서 해상도(step)만큼 뺀 시각을 다음 `to`로 사용하며, 시각이 진전되지 않으면 무한 루프 방지를 위해 중단.
+  - 병합 후 시간순 정렬을 수행하고 동일 시각 캔들은 deduplicate 처리.
   - `BinanceChartFetcher`는 `clients.binance.max-candles-per-call` 값을 상한으로 분할해 루프 호출함.
   - `BinanceChartFetcher`는 배치별 `endTime`을 `earliestReturnedCandle.openTime - resolutionDuration`으로 갱신하며, 빈 배열(`[]`) 응답 시 조기 종료함.
   - `BinanceChartFetcher`는 배치 병합 후 `time` 기준 중복 제거를 수행해 도메인(`CandleSeries`) 중복 검증 실패를 방어함.
@@ -82,8 +85,10 @@
   - 차트 서비스: `ChartServiceTest`, `ChartFetcherResolverTest`
   - 차트 fetcher 분할/페이지네이션: `UpbitChartFetcherSplitTest`, `BinanceChartFetcherPaginationTest`
   - 외부 API 호출 테스트: `UpbitApiClientTest`, `BinanceApiClientTest` (@Tag("external"))
-    - `BinanceApiClientTest`에 1회 한도 초과 요청을 `BinanceChartFetcher`로 검증하는 외부 테스트 포함.
   - 컨텍스트 로드: `TraticApplicationTests`
+- 최근 테스트 변경:
+  - `UpbitChartFetcherSplitTest` 삭제.
+  - `UpbitChartFetcherPaginationTest` 추가(페이지네이션, partial 응답, empty 응답, 중복 캔들 제거 시나리오).
 - 테스트가 없는 영역(테스트 파일 부재 기준):
   - `auth` 패키지 전반(컨트롤러/서비스/도메인/infra) 테스트 없음.
   - `user` 패키지 전반 테스트 없음.

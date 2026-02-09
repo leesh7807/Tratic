@@ -46,6 +46,7 @@ logging:
 clients:
   upbit:
     base-url: "https://api.upbit.com/v1"
+    max-candle-count-per-request: 200
   binance:
     base-url: "https://fapi.binance.com"
     max-candles-per-call: 1500

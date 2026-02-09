@@ -12,7 +12,7 @@ import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
 @EnableConfigurationProperties({ UpbitProps.class, BinanceProps.class })
 public class ClientPropsConfig {
     @ConfigurationProperties(prefix = "clients.upbit")
-    public record UpbitProps(@NonNull String baseUrl) {
+    public record UpbitProps(@NonNull String baseUrl, int maxCandleCountPerRequest) {
     }
 
     @ConfigurationProperties(prefix = "clients.binance")
