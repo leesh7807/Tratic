@@ -4,9 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.stereotype.Component;
 
@@ -72,14 +70,7 @@ public class BinanceChartFetcher implements ChartFetcher {
         List<Candle> sorted = candles.stream()
                 .sorted(Comparator.comparing(Candle::time))
                 .toList();
-
-        Set<Instant> seen = new HashSet<>();
-        List<Candle> deduplicated = new ArrayList<>(sorted.size());
-        for (Candle candle : sorted) {
-            if (seen.add(candle.time())) {
-                deduplicated.add(candle);
-            }
-        }
+        List<Candle> deduplicated = deduplicateSortedByTime(sorted);
 
         return Result.ok(Chart.of(sig, CandleSeries.ofSorted(deduplicated)));
     }
@@ -101,5 +92,17 @@ public class BinanceChartFetcher implements ChartFetcher {
             case D1 -> "1d";
             default -> throw new IllegalArgumentException("unsupported timeframe: " + timeResolution);
         };
+    }
+
+    private static List<Candle> deduplicateSortedByTime(List<Candle> sortedCandles) {
+        List<Candle> deduplicated = new ArrayList<>(sortedCandles.size());
+        Instant lastTime = null;
+        for (Candle candle : sortedCandles) {
+            if (!candle.time().equals(lastTime)) {
+                deduplicated.add(candle);
+                lastTime = candle.time();
+            }
+        }
+        return deduplicated;
     }
 }
