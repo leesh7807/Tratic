@@ -1,11 +1,5 @@
 ﻿# AGENTS
 
-이 문서는 코드베이스 분석 결과(Phase-1)와 그 사실에 근거한 설계/브랜치 전략(Phase-2)을 정리한 문서이다.
-
----
-
-# ?? Phase-1: 프로젝트 사실 수집 (Fact Extraction)
-
 ## 1) 전체 아키텍처 개요
 - 패키지 구분: `app.leesh.tratic.{auth,chart,user,shared}`에 `domain/service/infra` 하위 패키지가 존재함.
 - 포트/어댑터 형태로 보이는 인터페이스/구현 쌍:
@@ -93,7 +87,3 @@
   - `auth` 패키지 전반(컨트롤러/서비스/도메인/infra) 테스트 없음.
   - `user` 패키지 전반 테스트 없음.
   - `shared` 패키지(config/logging/Result) 테스트 없음.
-- TODO 검색 결과: `src` 내 `TODO`/`todo` 매칭 없음.
-- 주석으로 남은 설계 흔적:
-  - `ChartFetchFailure.RateLimited` 주석에 retry/backoff 정책 설명.
-  - `UpbitApiClient`의 onStatus 처리 주석에 “retry-after 계산 없음” 명시.
