@@ -6,17 +6,28 @@ public sealed interface Result<T, E>
         permits Result.Ok, Result.Err {
 
     <U> Result<U, E> map(Function<T, U> mapper);
+    <U> Result<U, E> flatMap(Function<T, Result<U, E>> mapper);
 
     record Ok<T, E>(T value) implements Result<T, E> {
         @Override
         public <U> Result<U, E> map(Function<T, U> mapper) {
             return Result.ok(mapper.apply(value));
         }
+
+        @Override
+        public <U> Result<U, E> flatMap(Function<T, Result<U, E>> mapper) {
+            return mapper.apply(value);
+        }
     }
 
     record Err<T, E>(E error) implements Result<T, E> {
         @Override
         public <U> Result<U, E> map(Function<T, U> mapper) {
+            return Result.err(error);
+        }
+
+        @Override
+        public <U> Result<U, E> flatMap(Function<T, Result<U, E>> mapper) {
             return Result.err(error);
         }
     }

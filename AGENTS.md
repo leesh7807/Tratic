@@ -87,3 +87,19 @@
   - `auth` 패키지 전반(컨트롤러/서비스/도메인/infra) 테스트 없음.
   - `user` 패키지 전반 테스트 없음.
   - `shared` 패키지(config/logging/Result) 테스트 없음.
+
+## 7) 최근 변경 사항 (append-only)
+- `BinanceRateLimiter.acquire`의 요청 가중치 범위 오류(`requestWeight <= 0 || > 6000`)를 `ChartFetchFailure.RateLimited`가 아닌 `ChartFetchFailure.InvalidRequest`로 분리.
+  - 파일: `src/main/java/app/leesh/tratic/chart/infra/binance/BinanceRateLimiter.java`
+- `BinanceApiClient.fetchCandlesTo`에서 rate limiter 결과 타입을 `Result<Void, ChartFetchFailure>`로 반영.
+  - 파일: `src/main/java/app/leesh/tratic/chart/infra/binance/BinanceApiClient.java`
+- `shared.Result`에 `flatMap(Function<T, Result<U, E>>)` 추가.
+  - `Ok`: mapper 실행 결과 반환.
+  - `Err`: 기존 에러 그대로 전파.
+  - 파일: `src/main/java/app/leesh/tratic/shared/Result.java`
+- `BinanceApiClient.fetchCandlesTo`를 `rateLimiter.acquire(requestWeight).flatMap(...)` 형태로 정리하고, HTTP 호출 로직을 `fetchFromApi(...)`로 분리.
+  - 파일: `src/main/java/app/leesh/tratic/chart/infra/binance/BinanceApiClient.java`
+- 테스트 갱신:
+  - `BinanceRateLimiterTest`의 제네릭 타입을 `ChartFetchFailure`로 확장.
+  - out-of-range weight가 `InvalidRequest`를 반환하는 케이스 추가.
+  - 파일: `src/test/java/app/leesh/tratic/chart/infra/binance/BinanceRateLimiterTest.java`

@@ -21,17 +21,29 @@ public class BinanceApiClient {
 
     private final RestClient client;
     private final ObjectMapper om;
+    private final BinanceRateLimiter rateLimiter;
 
-    public BinanceApiClient(RestClient.Builder builder, BinanceProps props, ObjectMapper om) {
+    public BinanceApiClient(RestClient.Builder builder, BinanceProps props, ObjectMapper om, BinanceRateLimiter rateLimiter) {
         this.client = builder
                 .baseUrl(props.baseUrl())
                 .defaultHeader("X-Client-Name", "binance")
                 .build();
         this.om = om;
+        this.rateLimiter = rateLimiter;
     }
 
     public Result<BinanceCandleResponse[], ChartFetchFailure> fetchCandlesTo(ChartSignature sig, String symbol,
             String interval, long to, int limit) {
+        if (limit <= 0 || limit > 1500) {
+            return Result.err(new ChartFetchFailure.InvalidRequest(Market.BINANCE));
+        }
+
+        int requestWeight = calculateWeight(limit);
+        return rateLimiter.acquire(requestWeight)
+                .flatMap(ignored -> fetchFromApi(symbol, interval, to, limit));
+    }
+
+    private Result<BinanceCandleResponse[], ChartFetchFailure> fetchFromApi(String symbol, String interval, long to, int limit) {
         return client.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/fapi/v1/klines")
@@ -62,6 +74,19 @@ public class BinanceApiClient {
                     // retry-after 계산 없이 상위 정책 폴백에 맡기는 상태
                     return Result.err(failure);
                 });
+    }
+
+    static int calculateWeight(int limit) {
+        if (limit < 100) {
+            return 1;
+        }
+        if (limit < 500) {
+            return 2;
+        }
+        if (limit <= 1000) {
+            return 5;
+        }
+        return 10;
     }
 
     public record BinanceErrorEnvelope(int code, String msg) {
