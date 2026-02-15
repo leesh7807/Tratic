@@ -2,6 +2,7 @@ package app.leesh.tratic.shared.config;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.Objects;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,16 +16,16 @@ import app.leesh.tratic.shared.logging.OutboundLoggingInterceptor;
 
 @Configuration
 public class CommonRestClientConfig {
-
+        
         @Bean
         public RestClient.Builder commonRestClientBuilder(
                         @NonNull OutboundLoggingInterceptor outboundLoggingInterceptor) {
-
-                HttpClient httpClient = HttpClient.newBuilder()
+                                
+                HttpClient httpClient = Objects.requireNonNull(HttpClient.newBuilder()
                                 .connectTimeout(Duration.ofSeconds(2))
-                                .build();
+                                .build());
                 JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-                requestFactory.setReadTimeout(Duration.ofSeconds(5));
+                requestFactory.setReadTimeout(Objects.requireNonNull(Duration.ofSeconds(5)));
 
                 return RestClient.builder()
                                 .requestFactory(requestFactory)
