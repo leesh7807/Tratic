@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -38,6 +39,9 @@ public class UpbitChartFetcherPaginationTest {
     @Mock
     private UpbitApiClient apiClient;
 
+    @Mock
+    private UpbitRateLimiter rateLimiter;
+
     @Test
     @DisplayName("요청 수가 페이지 한도를 넘으면 설정된 크기로 페이지네이션해 순차 호출한다")
     public void fetch_paginatesRequestsByConfiguredChunkSize_and_rollsBackToEarliestMinusResolution() {
@@ -60,8 +64,10 @@ public class UpbitChartFetcherPaginationTest {
                 .thenReturn(Result.ok(batch1))
                 .thenReturn(Result.ok(batch2))
                 .thenReturn(Result.ok(batch3));
+        when(rateLimiter.acquire(3)).thenReturn(Result.ok(null));
 
-        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, new UpbitCandleResponseMapper(), upbitProps(pageLimit));
+        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
+                upbitProps(pageLimit));
         ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, firstLatest, firstCount + secondCount + thirdCount);
 
@@ -73,6 +79,7 @@ public class UpbitChartFetcherPaginationTest {
         ArgumentCaptor<Long> countCaptor = ArgumentCaptor.forClass(Long.class);
         verify(apiClient, times(3)).fetchMinuteCandles(eq(5L), eq("KRW-BTC"), toCaptor.capture(),
                 countCaptor.capture());
+        verify(rateLimiter).acquire(3);
 
         List<String> toValues = toCaptor.getAllValues();
         List<Long> countValues = countCaptor.getAllValues();
@@ -109,8 +116,10 @@ public class UpbitChartFetcherPaginationTest {
                 .thenReturn(Result.ok(batch1))
                 .thenReturn(Result.ok(batch2))
                 .thenReturn(Result.ok(batch3));
+        when(rateLimiter.acquire(3)).thenReturn(Result.ok(null));
 
-        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, new UpbitCandleResponseMapper(), upbitProps(pageLimit));
+        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
+                upbitProps(pageLimit));
         ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, firstLatest, 450);
 
@@ -122,6 +131,7 @@ public class UpbitChartFetcherPaginationTest {
         ArgumentCaptor<Long> countCaptor = ArgumentCaptor.forClass(Long.class);
         verify(apiClient, times(3)).fetchMinuteCandles(eq(5L), eq("KRW-BTC"), toCaptor.capture(),
                 countCaptor.capture());
+        verify(rateLimiter).acquire(3);
 
         List<String> toValues = toCaptor.getAllValues();
         List<Long> countValues = countCaptor.getAllValues();
@@ -152,8 +162,10 @@ public class UpbitChartFetcherPaginationTest {
         when(apiClient.fetchMinuteCandles(anyLong(), anyString(), anyString(), anyLong()))
                 .thenReturn(Result.ok(batch1))
                 .thenReturn(Result.ok(empty));
+        when(rateLimiter.acquire(3)).thenReturn(Result.ok(null));
 
-        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, new UpbitCandleResponseMapper(), upbitProps(pageLimit));
+        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
+                upbitProps(pageLimit));
         ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, firstLatest, 450);
 
@@ -165,6 +177,7 @@ public class UpbitChartFetcherPaginationTest {
         ArgumentCaptor<Long> countCaptor = ArgumentCaptor.forClass(Long.class);
         verify(apiClient, times(2)).fetchMinuteCandles(eq(5L), eq("KRW-BTC"), toCaptor.capture(),
                 countCaptor.capture());
+        verify(rateLimiter).acquire(3);
 
         List<String> toValues = toCaptor.getAllValues();
         List<Long> countValues = countCaptor.getAllValues();
@@ -202,8 +215,10 @@ public class UpbitChartFetcherPaginationTest {
                 .thenReturn(Result.ok(batch1))
                 .thenReturn(Result.ok(batch2))
                 .thenReturn(Result.ok(batch3));
+        when(rateLimiter.acquire(3)).thenReturn(Result.ok(null));
 
-        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, new UpbitCandleResponseMapper(), upbitProps(pageLimit));
+        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
+                upbitProps(pageLimit));
         ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, t2, 7);
 
@@ -211,6 +226,28 @@ public class UpbitChartFetcherPaginationTest {
 
         assertInstanceOf(Result.Ok.class, result);
         verify(apiClient, times(3)).fetchMinuteCandles(eq(5L), eq("KRW-BTC"), anyString(), anyLong());
+        verify(rateLimiter).acquire(3);
+    }
+
+    @Test
+    @DisplayName("요청 캔들 수가 즉시 처리 가능한 호출 수를 넘으면 fail-fast로 종료한다")
+    public void fetch_failsFastWhenRequiredCallsExceedPerSecondLimit() {
+        int pageLimit = 200;
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 2001);
+
+        when(rateLimiter.acquire(11)).thenReturn(Result.err(new ChartFetchFailure.InvalidRequest(Market.UPBIT)));
+
+        UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
+                upbitProps(pageLimit));
+
+        Result<Chart, ChartFetchFailure> result = fetcher.fetch(req);
+
+        assertInstanceOf(Result.Err.class, result);
+        Result.Err<Chart, ChartFetchFailure> err = (Result.Err<Chart, ChartFetchFailure>) result;
+        assertInstanceOf(ChartFetchFailure.InvalidRequest.class, err.error());
+        verify(rateLimiter).acquire(11);
+        verifyNoInteractions(apiClient);
     }
 
     private static UpbitProps upbitProps(int maxCandleCountPerRequest) {

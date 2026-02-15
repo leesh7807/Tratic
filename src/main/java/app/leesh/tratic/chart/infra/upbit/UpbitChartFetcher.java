@@ -23,11 +23,13 @@ import app.leesh.tratic.shared.Result;
 @Component
 public class UpbitChartFetcher implements ChartFetcher {
     private final UpbitApiClient apiClient;
+    private final UpbitRateLimiter rateLimiter;
     private final UpbitCandleResponseMapper mapper;
     private final int maxCandleCountPerRequest;
 
-    public UpbitChartFetcher(UpbitApiClient apiClient, UpbitCandleResponseMapper mapper, UpbitProps props) {
+    public UpbitChartFetcher(UpbitApiClient apiClient, UpbitRateLimiter rateLimiter, UpbitCandleResponseMapper mapper, UpbitProps props) {
         this.apiClient = apiClient;
+        this.rateLimiter = rateLimiter;
         this.mapper = mapper;
         this.maxCandleCountPerRequest = props.maxCandleCountPerRequest();
         if (this.maxCandleCountPerRequest <= 0) {
@@ -37,6 +39,11 @@ public class UpbitChartFetcher implements ChartFetcher {
 
     @Override
     public Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req) {
+        int requiredCalls = calculateRequiredCalls(req.count());
+        return rateLimiter.acquire(requiredCalls).flatMap(ignored -> fetchCandles(req));
+    }
+
+    private Result<Chart, ChartFetchFailure> fetchCandles(ChartFetchRequest req) {
         ChartSignature sig = req.sig();
         TimeResolution timeResolution = sig.timeResolution();
         String market = sig.symbol().value();
@@ -55,28 +62,25 @@ public class UpbitChartFetcher implements ChartFetcher {
                 res = apiClient.fetchDayCandles(market, to.toString(), batchCount);
             }
 
-            UpbitCandleResponse[] body;
-            if (res instanceof Result.Ok<UpbitCandleResponse[], ChartFetchFailure> ok) {
-                body = ok.value();
-            } else {
-                var err = (Result.Err<UpbitCandleResponse[], ChartFetchFailure>) res;
+            Result<List<Candle>, ChartFetchFailure> batchResult = res.map(mapper::toCandles);
+            if (batchResult instanceof Result.Ok<List<Candle>, ChartFetchFailure> ok) {
+                List<Candle> batch = ok.value();
+                candles.addAll(batch);
+
+                if (batch.isEmpty()) {
+                    break;
+                }
+
+                Instant earliest = batch.get(0).time();
+                Instant nextTo = earliest.minus(step);
+                if (!nextTo.isBefore(to)) {
+                    break;
+                }
+                to = nextTo;
+                remaining -= batch.size();
+            } else if (batchResult instanceof Result.Err<List<Candle>, ChartFetchFailure> err) {
                 return Result.err(err.error());
             }
-
-            List<Candle> batch = mapper.toCandles(body);
-            candles.addAll(batch);
-
-            if (batch.isEmpty()) {
-                break;
-            }
-
-            Instant earliest = batch.get(0).time();
-            Instant nextTo = earliest.minus(step);
-            if (!nextTo.isBefore(to)) {
-                break;
-            }
-            to = nextTo;
-            remaining -= batch.size();
         }
 
         List<Candle> sorted = candles.stream()
@@ -121,5 +125,13 @@ public class UpbitChartFetcher implements ChartFetcher {
             }
         }
         return deduplicated;
+    }
+
+    private int calculateRequiredCalls(long candleCount) {
+        long required = (candleCount + maxCandleCountPerRequest - 1) / maxCandleCountPerRequest;
+        if (required > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) required;
     }
 }

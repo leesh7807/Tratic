@@ -21,13 +21,15 @@ public class UpbitApiClient {
 
         private final RestClient client;
         private final ObjectMapper om;
+        private final UpbitRateLimiter rateLimiter;
 
-        public UpbitApiClient(RestClient.Builder builder, UpbitProps props, ObjectMapper om) {
+        public UpbitApiClient(RestClient.Builder builder, UpbitProps props, ObjectMapper om, UpbitRateLimiter rateLimiter) {
                 this.client = builder
                                 .baseUrl(props.baseUrl())
                                 .defaultHeader("X-Client-Name", "upbit")
                                 .build();
                 this.om = om;
+                this.rateLimiter = rateLimiter;
         }
 
         /**
@@ -77,6 +79,9 @@ public class UpbitApiClient {
                                 })
                                 .accept(MediaType.APPLICATION_JSON)
                                 .exchange((req, res) -> {
+                                        String remainingReq = res.getHeaders().getFirst("Remaining-Req");
+                                        rateLimiter.syncRemainingReqHeader(remainingReq);
+
                                         int status = res.getStatusCode().value();
                                         if (!res.getStatusCode().isError()) {
                                                 UpbitCandleResponse[] body = om.readValue(res.getBody(),

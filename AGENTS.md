@@ -103,3 +103,24 @@
   - `BinanceRateLimiterTest`의 제네릭 타입을 `ChartFetchFailure`로 확장.
   - out-of-range weight가 `InvalidRequest`를 반환하는 케이스 추가.
   - 파일: `src/test/java/app/leesh/tratic/chart/infra/binance/BinanceRateLimiterTest.java`
+- Upbit 초당 요청 제한(10 req/s)용 `UpbitRateLimiter` 추가.
+  - `acquire(int requestCount)`에서 `requestCount <= 0 || > 10`은 `ChartFetchFailure.InvalidRequest` 반환.
+  - 윈도우 잔여량 초과 시 다음 1초 윈도우까지 `Sleeper`로 대기 후 진행하며, 인터럽트 시 `ChartFetchFailure.RateLimited` 반환.
+  - `Remaining-Req` 헤더의 `sec` 값을 파싱해 로컬 윈도우 사용량 보정(`syncRemainingReqHeader`) 추가.
+  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitRateLimiter.java`
+- `UpbitChartFetcher`가 전체 요청 캔들 수 기준 필요 호출 횟수(`ceil(count / maxCandleCountPerRequest)`)를 선계산해 `UpbitRateLimiter.acquire(...)`를 선호출하도록 변경.
+  - 호출 횟수가 10을 초과하는 대용량 요청(기본 설정 기준 2000 초과)은 API 호출 전에 fail-fast(`InvalidRequest`) 처리됨.
+  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitChartFetcher.java`
+- `UpbitApiClient`에 `UpbitRateLimiter`를 주입하고, 모든 응답에서 `Remaining-Req` 헤더를 읽어 rate limiter 상태를 동기화하도록 변경.
+  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitApiClient.java`
+- 테스트 갱신:
+  - `UpbitChartFetcherPaginationTest`에 rate limiter 목 주입 및 선호출 검증 추가.
+  - 2001개 요청 시 `acquire(11)` 실패로 API 호출 없이 fail-fast 되는 시나리오 추가.
+  - 파일: `src/test/java/app/leesh/tratic/chart/infra/upbit/UpbitChartFetcherPaginationTest.java`
+- 테스트 추가:
+  - `UpbitRateLimiterTest` 신설.
+  - 범위 검증(`<=0`, `>10`), 윈도우 대기 sleep, `Remaining-Req` 동기화, 인터럽트 시 `RateLimited` 전환 케이스 추가.
+  - 파일: `src/test/java/app/leesh/tratic/chart/infra/upbit/UpbitRateLimiterTest.java`
+- `UpbitChartFetcher.fetch`에서 선행 rate limit 검증을 `rateLimiter.acquire(requiredCalls).flatMap(...)` 체인으로 정리하고,
+  배치 응답 매핑을 `res.map(mapper::toCandles)`로 리팩터링해 수동 언래핑 분기를 축소.
+  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitChartFetcher.java`
