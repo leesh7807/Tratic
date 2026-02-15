@@ -12,17 +12,17 @@ import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 
 import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
 import app.leesh.tratic.shared.time.Sleeper;
 
 class UpbitRateLimiterTest {
-
     @Test
     void acquire_returnsInvalidRequestWhenRequestCountOutOfRange() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper();
-        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper);
+        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         Result<Void, ChartFetchFailure> zero = limiter.acquire(0);
         Result<Void, ChartFetchFailure> overTen = limiter.acquire(11);
@@ -38,7 +38,7 @@ class UpbitRateLimiterTest {
     void acquire_sleepsWhenWindowIsExhausted() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper(clock);
-        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper);
+        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         assertInstanceOf(Result.Ok.class, limiter.acquire(10));
 
@@ -53,7 +53,7 @@ class UpbitRateLimiterTest {
     void syncRemainingReqHeader_updatesLocalWindowUsage() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper(clock);
-        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper);
+        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         limiter.syncRemainingReqHeader("group=market; min=599; sec=3");
         clock.setInstant(Instant.parse("2026-01-01T00:00:00.500Z"));
@@ -67,7 +67,7 @@ class UpbitRateLimiterTest {
     void syncRemainingReqHeader_ignoresMalformedValue() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper(clock);
-        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper);
+        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         limiter.syncRemainingReqHeader("group=market; min=599");
         Result<Void, ChartFetchFailure> result = limiter.acquire(10);
@@ -83,7 +83,7 @@ class UpbitRateLimiterTest {
     void acquire_returnsRateLimitedWhenInterrupted() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         InterruptingSleeper sleeper = new InterruptingSleeper();
-        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper);
+        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         assertInstanceOf(Result.Ok.class, limiter.acquire(10));
         clock.setInstant(Instant.parse("2026-01-01T00:00:00.900Z"));
@@ -98,6 +98,12 @@ class UpbitRateLimiterTest {
         assertEquals(Duration.ofMillis(100), rateLimited.retryAfter());
         assertTrue(Thread.currentThread().isInterrupted());
         Thread.interrupted();
+    }
+
+    private static UpbitProps props(Duration fastFailWaitThreshold) {
+        UpbitProps props = org.mockito.Mockito.mock(UpbitProps.class);
+        org.mockito.Mockito.when(props.fastFailWaitThreshold()).thenReturn(fastFailWaitThreshold);
+        return props;
     }
 
     private static final class RecordingSleeper implements Sleeper {

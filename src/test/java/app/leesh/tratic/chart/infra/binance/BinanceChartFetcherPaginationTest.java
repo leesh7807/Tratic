@@ -150,10 +150,12 @@ class BinanceChartFetcherPaginationTest {
     }
 
     private BinanceChartFetcher fetcher(int maxPerCall) {
+        BinanceProps props = org.mockito.Mockito.mock(BinanceProps.class);
+        when(props.maxCandlesPerCall()).thenReturn(maxPerCall);
         return new BinanceChartFetcher(
                 apiClient,
                 new BinanceCandleResponseMapper(),
-                new BinanceProps("https://fapi.binance.com", maxPerCall));
+                props);
     }
 
     private static ChartSignature signature() {

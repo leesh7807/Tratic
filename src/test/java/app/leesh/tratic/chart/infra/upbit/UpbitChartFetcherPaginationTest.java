@@ -251,7 +251,9 @@ public class UpbitChartFetcherPaginationTest {
     }
 
     private static UpbitProps upbitProps(int maxCandleCountPerRequest) {
-        return new UpbitProps("https://api.upbit.com/v1", maxCandleCountPerRequest);
+        UpbitProps props = org.mockito.Mockito.mock(UpbitProps.class);
+        when(props.maxCandleCountPerRequest()).thenReturn(maxCandleCountPerRequest);
+        return props;
     }
 
     private static UpbitCandleResponse[] buildCandles(String market, Instant earliest, int count, Duration step,

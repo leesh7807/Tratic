@@ -12,12 +12,12 @@ import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 
 import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
 import app.leesh.tratic.shared.time.Sleeper;
 
 class BinanceRateLimiterTest {
-
     @Test
     void calculateWeight_matchesRequiredRanges() {
         assertEquals(1, BinanceApiClient.calculateWeight(1));
@@ -34,7 +34,7 @@ class BinanceRateLimiterTest {
     void acquire_fastFailsWhenExpectedWaitExceedsThreeSeconds() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper();
-        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper);
+        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         assertInstanceOf(Result.Ok.class, limiter.acquire(6000));
 
@@ -54,7 +54,7 @@ class BinanceRateLimiterTest {
     void acquire_sleepsWhenExpectedWaitIsThreeSecondsOrLess() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper(clock);
-        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper);
+        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         assertInstanceOf(Result.Ok.class, limiter.acquire(6000));
 
@@ -69,7 +69,7 @@ class BinanceRateLimiterTest {
     void acquire_returnsInvalidRequestWhenWeightIsOutOfRange() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper();
-        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper);
+        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
 
         Result<Void, ChartFetchFailure> nonPositive = limiter.acquire(0);
         Result<Void, ChartFetchFailure> tooLarge = limiter.acquire(6001);
@@ -81,6 +81,12 @@ class BinanceRateLimiterTest {
         Result.Err<Void, ChartFetchFailure> tooLargeErr = (Result.Err<Void, ChartFetchFailure>) tooLarge;
         assertInstanceOf(ChartFetchFailure.InvalidRequest.class, nonPositiveErr.error());
         assertInstanceOf(ChartFetchFailure.InvalidRequest.class, tooLargeErr.error());
+    }
+
+    private static BinanceProps props(Duration fastFailWaitThreshold) {
+        BinanceProps props = org.mockito.Mockito.mock(BinanceProps.class);
+        org.mockito.Mockito.when(props.fastFailWaitThreshold()).thenReturn(fastFailWaitThreshold);
+        return props;
     }
 
     private static final class RecordingSleeper implements Sleeper {

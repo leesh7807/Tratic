@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
 import app.leesh.tratic.shared.time.Sleeper;
@@ -18,18 +19,22 @@ public class UpbitRateLimiter {
 
     private static final int MAX_REQUESTS_PER_SECOND = 10;
     private static final Duration WINDOW_SIZE = Duration.ofSeconds(1);
-    private static final Duration FAST_FAIL_THRESHOLD = Duration.ofSeconds(3);
     private static final Pattern SEC_PATTERN = Pattern.compile("sec\\s*=\\s*(\\d+)");
 
     private final Clock clock;
     private final Sleeper sleeper;
+    private final Duration fastFailWaitThreshold;
 
     private Instant windowStart = Instant.EPOCH;
     private int usedRequestsInWindow = 0;
 
-    public UpbitRateLimiter(Clock clock, Sleeper sleeper) {
+    public UpbitRateLimiter(Clock clock, Sleeper sleeper, UpbitProps props) {
         this.clock = clock;
         this.sleeper = sleeper;
+        this.fastFailWaitThreshold = props.fastFailWaitThreshold();
+        if (fastFailWaitThreshold.isNegative() || fastFailWaitThreshold.isZero()) {
+            throw new IllegalArgumentException("clients.upbit.fast-fail-wait-threshold must be positive");
+        }
     }
 
     public synchronized Result<Void, ChartFetchFailure> acquire(int requestCount) {
@@ -50,7 +55,7 @@ public class UpbitRateLimiter {
             retryAfter = Duration.ZERO;
         }
 
-        if (retryAfter.compareTo(FAST_FAIL_THRESHOLD) >= 0) {
+        if (retryAfter.compareTo(fastFailWaitThreshold) >= 0) {
             return Result.err(new ChartFetchFailure.RateLimited(Market.UPBIT, retryAfter));
         }
 

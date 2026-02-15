@@ -7,6 +7,7 @@ import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
 import app.leesh.tratic.shared.time.Sleeper;
@@ -16,17 +17,21 @@ public class BinanceRateLimiter {
 
     private static final int MAX_WEIGHT_PER_MINUTE = 6000;
     private static final Duration WINDOW_SIZE = Duration.ofMinutes(1);
-    private static final Duration FAST_FAIL_THRESHOLD = Duration.ofSeconds(3);
 
     private final Clock clock;
     private final Sleeper sleeper;
+    private final Duration fastFailWaitThreshold;
 
     private Instant windowStart = Instant.EPOCH;
     private int usedWeightInWindow = 0;
 
-    public BinanceRateLimiter(Clock clock, Sleeper sleeper) {
+    public BinanceRateLimiter(Clock clock, Sleeper sleeper, BinanceProps props) {
         this.clock = clock;
         this.sleeper = sleeper;
+        this.fastFailWaitThreshold = props.fastFailWaitThreshold();
+        if (fastFailWaitThreshold.isNegative() || fastFailWaitThreshold.isZero()) {
+            throw new IllegalArgumentException("clients.binance.fast-fail-wait-threshold must be positive");
+        }
     }
 
     public synchronized Result<Void, ChartFetchFailure> acquire(int requestWeight) {
@@ -47,7 +52,7 @@ public class BinanceRateLimiter {
             retryAfter = Duration.ZERO;
         }
 
-        if (retryAfter.compareTo(FAST_FAIL_THRESHOLD) > 0) {
+        if (retryAfter.compareTo(fastFailWaitThreshold) > 0) {
             return Result.err(new ChartFetchFailure.RateLimited(Market.BINANCE, retryAfter));
         }
 
