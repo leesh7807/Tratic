@@ -1,126 +1,60 @@
-﻿# AGENTS
+# AGENTS
 
-## 1) 전체 아키텍처 개요
-- 패키지 구분: `app.leesh.tratic.{auth,chart,user,shared}`에 `domain/service/infra` 하위 패키지가 존재함.
-- 포트/어댑터 형태로 보이는 인터페이스/구현 쌍:
-  - `chart.service.ChartFetcher` 인터페이스 + `chart.infra.upbit.UpbitChartFetcher`, `chart.infra.binance.BinanceChartFetcher` 구현.
-  - `auth.service.OAuthAccountLinkRepository` 인터페이스 + `auth.infra.adapter.OAuthAccountLinkRepositoryJpaAdapter` 구현.
-- 주요 도메인/모듈 패키지 목록:
-  - `auth`(controller/domain/service/infra)
-  - `chart`(domain/service/infra)
-  - `user`(domain/infra)
-  - `shared`(config/logging/Result)
-- inbound adapter 위치:
-  - `auth.controller.ErrorPageController`
-  - 보안 필터 체인/필터: `shared.config.SecurityConfig`, `shared.logging.TraceIdFilter`
-- outbound adapter 위치:
-  - 외부 API: `chart.infra.upbit.*`, `chart.infra.binance.*`
-  - DB/JPA: `auth.infra.adapter.*`, `auth.infra.dao.*`, `user.infra.dao.*`, `auth.infra.entity.*`, `user.infra.entity.*`
+## 1) 모듈/패키지
+- 루트 패키지: `app.leesh.tratic`
+- 모듈 구성: `auth(controller/domain/service/infra)`, `chart(domain/service/infra)`, `user(domain/infra)`, `shared(config/logging/time/Result)`
+- 진입점: `TraticApplication`, `auth.controller.ErrorPageController`
+- 보안 구성: `shared.config.SecurityConfig`, `shared.logging.TraceIdFilter`
+- 공통 HTTP 구성: `shared.config.CommonRestClientConfig`, `shared.logging.OutboundLoggingInterceptor`
 
-## 2) 도메인별 책임 정리
-- chart
-  - 엔티티/VO: `Chart`, `Candle`, `CandleSeries`, `ChartSignature`, `Symbol`, `Market`, `TimeResolution`
-  - 서비스: `chart.service.ChartService`, `ChartFetcherResolver`
-  - 외부 의존 Port: `chart.service.ChartFetcher`
-  - 알고 있는 것: `chart.domain` 클래스들은 `java.*`와 `chart.domain` 타입만 참조함.
-  - 알지 않는 것: `chart.domain`에서 `chart.service`/`chart.infra` 참조 없음.
-- auth
-  - 엔티티/VO: `OAuthIdentity`, `OAuthProvider`
-  - 서비스: `CustomOidcUserService`, `OAuthAccountResolver`
-  - 외부 의존 Port: `auth.service.OAuthAccountLinkRepository`
-  - 알고 있는 것: `auth.domain`은 `OAuthProvider/Identity`만 포함.
-  - 알지 않는 것: `auth.domain`에서 `infra` 참조 없음.
-- user
-  - 엔티티/VO: `User`, `UserId`
-  - 외부 의존 Port: 없음(도메인 레벨 인터페이스 없음)
-  - 알고 있는 것: `user.domain`은 `User/UserId`만 포함.
-  - 알지 않는 것: `user.domain`에서 `infra` 참조 없음.
-- shared
-  - 공통 유틸/모델: `shared.Result`
-  - 공통 인프라 구성: `shared.config.*`, `shared.logging.*`
+## 2) 포트/어댑터
+- chart 포트: `chart.service.ChartFetcher`
+- chart 어댑터: `chart.infra.upbit.UpbitChartFetcher`, `chart.infra.binance.BinanceChartFetcher`
+- auth 포트: `auth.service.OAuthAccountLinkRepository`
+- auth 어댑터: `auth.infra.adapter.OAuthAccountLinkRepositoryJpaAdapter`
+- DB/JPA 어댑터: `auth.infra.{dao,entity}.*`, `user.infra.{dao,entity}.*`
+- 외부 API 어댑터: `chart.infra.upbit.*`, `chart.infra.binance.*`
 
-## 3) 차트 수집 관련 구조
-- `ChartService` 역할과 public 메서드 시그니처:
-  - 역할: `ChartFetcherResolver`로 마켓별 fetcher를 선택하고, fetcher가 반환한 `Result`를 그대로 반환.
-  - 시그니처: `public Result<Chart, ChartFetchFailure> collectChart(ChartFetchRequest req)`
-- `ChartFetcher / Resolver` 구조:
-  - `ChartFetcherResolver`는 `List<ChartFetcher>`를 받아 `Market`별로 매핑하고, 중복/미지원 마켓 시 `IllegalArgumentException` 발생.
-  - `ChartFetcher`는 `Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req)` 및 `Market market()` 제공.
-- 루프 호출 / pagination / rate-limit 관련 코드 존재 여부:
-  - `UpbitChartFetcher`는 요청 수량(`remaining`)이 0이 될 때까지 반복 호출하며 페이지네이션을 수행함.
-  - 페이지 크기는 고정 상수(200)가 아니라 `clients.upbit.max-candle-count-per-request` 설정값 사용.
-  - 각 페이지의 가장 이른 캔들 시각에서 해상도(step)만큼 뺀 시각을 다음 `to`로 사용하며, 시각이 진전되지 않으면 무한 루프 방지를 위해 중단.
-  - 병합 후 시간순 정렬을 수행하고 동일 시각 캔들은 deduplicate 처리.
-  - `BinanceChartFetcher`는 `clients.binance.max-candles-per-call` 값을 상한으로 분할해 루프 호출함.
-  - `BinanceChartFetcher`는 배치별 `endTime`을 `earliestReturnedCandle.openTime - resolutionDuration`으로 갱신하며, 빈 배열(`[]`) 응답 시 조기 종료함.
-  - `BinanceChartFetcher`는 배치 병합 후 `time` 기준 중복 제거를 수행해 도메인(`CandleSeries`) 중복 검증 실패를 방어함.
-  - `ChartFetchFailure.RateLimited`가 존재하나, 재시도/대기 로직은 없음.
-- 마켓별 제약이 코드에 직접 등장하는 위치:
-  - `UpbitApiClient` 주석에 `count <= 200`, 분 단위 `unit`(1,3,5,10,15,30,60,240) 목록 명시.
-  - `UpbitChartFetcher.parseMinuteUnit`에서 분 단위 매핑(M1/M3/M5/M15/M30/H1/H4).
-  - `BinanceChartFetcher.parseTimeResolution`에서 interval 매핑("1m", "3m", …, "1d").
-  - `application.yml`의 `clients.binance.max-candles-per-call` 및 `ClientPropsConfig.BinanceProps.maxCandlesPerCall`로 Binance 1회 호출 상한을 주입받음.
+## 3) 도메인 경계
+- chart 도메인: `Chart`, `Candle`, `CandleSeries`, `ChartSignature`, `Symbol`, `Market`, `TimeResolution`
+- auth 도메인: `OAuthIdentity`, `OAuthProvider`
+- user 도메인: `User`, `UserId`
+- 의존 규칙: domain -> infra 참조 없음
+- 분석 영역: 전용 패키지/유스케이스 없음
 
-## 4) 분석 관련 구조
-- 분석 도메인/패키지/클래스/컨트롤러/유스케이스가 `src/main/java`에 존재하지 않음.
-- lookback(캔들 개수) 결정 로직이 존재하지 않음.
-- 분석 로직이 차트 도메인에 의존하는 코드가 존재하지 않음.
+## 4) 차트 수집
+- 엔트리: `ChartService.collectChart(ChartFetchRequest) -> Result<Chart, ChartFetchFailure>`
+- 리졸버 동작: `ChartFetcherResolver`가 `Market -> ChartFetcher` 매핑, 중복/미지원 시 `IllegalArgumentException`
+- 실패 타입 위치: `chart.service.error.ChartFetchFailure`
 
-## 5) 실패/에러 모델
-- `shared.Result<T,E>` 존재(Ok/Err sealed interface).
-- 차트 수집 실패 모델: `chart.service.ChartFetchFailure`(Temporary/RateLimited/InvalidRequest/Unauthorized/NotFound).
-- 에러 흐름:
-  - `UpbitApiClient`/`BinanceApiClient`에서 HTTP 에러를 `ChartFetchFailure`로 변환해 `Result.err` 반환.
-  - `ChartService.collectChart`는 fetcher의 `Result`를 그대로 반환.
+## 5) 거래소 구현/제약
+- Upbit 페이지 크기: `clients.upbit.max-candle-count-per-request`
+- Upbit 선검증: `requiredCalls=ceil(count/max)` 계산 후 `UpbitRateLimiter.acquire(requiredCalls)`
+- Upbit fail-fast: `requiredCalls > 10`이면 `InvalidRequest` 반환(API 호출 전)
+- Upbit 페이지 이동: `nextTo = earliest - resolutionDuration`, 빈 배치/진전 없음 시 중단
+- Upbit 후처리: 시간 정렬 + 동일 시각 deduplicate
+- Upbit 해상도 매핑: `M1/M3/M5/M15/M30/H1/H4` (D1은 day endpoint)
+- Binance 분할 상한: `clients.binance.max-candles-per-call`
+- Binance 페이지 이동: `endTime = earliest - resolutionDuration`, 빈 배치 시 중단
+- Binance 후처리: 시간 정렬 + `time` deduplicate
+- Binance interval 매핑: `M1/M3/M5/M15/M30/H1/H4/D1 -> 1m/3m/5m/15m/30m/1h/4h/1d`
+- Binance API 호출 구조: `BinanceApiClient.fetchCandlesTo`는 `rateLimiter.acquire(...).flatMap(...)` 체인, HTTP 로직은 `fetchFromApi(...)`
 
-## 6) 테스트 및 미완성 흔적
-- 테스트 존재:
-  - 차트 도메인: `ChartTest`, `CandleTest`, `CandleSeriesTest`
-  - 차트 서비스: `ChartServiceTest`, `ChartFetcherResolverTest`
-  - 차트 fetcher 분할/페이지네이션: `UpbitChartFetcherSplitTest`, `BinanceChartFetcherPaginationTest`
-  - 외부 API 호출 테스트: `UpbitApiClientTest`, `BinanceApiClientTest` (@Tag("external"))
-  - 컨텍스트 로드: `TraticApplicationTests`
-- 최근 테스트 변경:
-  - `UpbitChartFetcherSplitTest` 삭제.
-  - `UpbitChartFetcherPaginationTest` 추가(페이지네이션, partial 응답, empty 응답, 중복 캔들 제거 시나리오).
-- 테스트가 없는 영역(테스트 파일 부재 기준):
-  - `auth` 패키지 전반(컨트롤러/서비스/도메인/infra) 테스트 없음.
-  - `user` 패키지 전반 테스트 없음.
-  - `shared` 패키지(config/logging/Result) 테스트 없음.
+## 6) 레이트리밋/결과모델
+- Upbit limiter 규칙: 초당 10req, `requestCount<=0 || >10`이면 `InvalidRequest`, `Remaining-Req(sec)` 동기화, 인터럽트 시 `RateLimited`
+- Binance limiter 규칙: 분당 6000 weight, `requestWeight<=0 || >6000`이면 `InvalidRequest`, 인터럽트 시 `RateLimited`
+- fast-fail 임계값 키: `clients.{upbit,binance}.fast-fail-wait-threshold`
+- 결과 모델: `shared.Result<T,E>` (`Ok`/`Err`, `map`, `flatMap`)
+- 실패 모델: `Temporary`, `RateLimited`, `InvalidRequest`, `Unauthorized`, `NotFound`
+- API 에러 매핑: `UpbitApiClient`, `BinanceApiClient`가 HTTP 오류를 `ChartFetchFailure`로 변환
 
-## 7) 최근 변경 사항 (append-only)
-- `BinanceRateLimiter.acquire`의 요청 가중치 범위 오류(`requestWeight <= 0 || > 6000`)를 `ChartFetchFailure.RateLimited`가 아닌 `ChartFetchFailure.InvalidRequest`로 분리.
-  - 파일: `src/main/java/app/leesh/tratic/chart/infra/binance/BinanceRateLimiter.java`
-- `BinanceApiClient.fetchCandlesTo`에서 rate limiter 결과 타입을 `Result<Void, ChartFetchFailure>`로 반영.
-  - 파일: `src/main/java/app/leesh/tratic/chart/infra/binance/BinanceApiClient.java`
-- `shared.Result`에 `flatMap(Function<T, Result<U, E>>)` 추가.
-  - `Ok`: mapper 실행 결과 반환.
-  - `Err`: 기존 에러 그대로 전파.
-  - 파일: `src/main/java/app/leesh/tratic/shared/Result.java`
-- `BinanceApiClient.fetchCandlesTo`를 `rateLimiter.acquire(requestWeight).flatMap(...)` 형태로 정리하고, HTTP 호출 로직을 `fetchFromApi(...)`로 분리.
-  - 파일: `src/main/java/app/leesh/tratic/chart/infra/binance/BinanceApiClient.java`
-- 테스트 갱신:
-  - `BinanceRateLimiterTest`의 제네릭 타입을 `ChartFetchFailure`로 확장.
-  - out-of-range weight가 `InvalidRequest`를 반환하는 케이스 추가.
-  - 파일: `src/test/java/app/leesh/tratic/chart/infra/binance/BinanceRateLimiterTest.java`
-- Upbit 초당 요청 제한(10 req/s)용 `UpbitRateLimiter` 추가.
-  - `acquire(int requestCount)`에서 `requestCount <= 0 || > 10`은 `ChartFetchFailure.InvalidRequest` 반환.
-  - 윈도우 잔여량 초과 시 다음 1초 윈도우까지 `Sleeper`로 대기 후 진행하며, 인터럽트 시 `ChartFetchFailure.RateLimited` 반환.
-  - `Remaining-Req` 헤더의 `sec` 값을 파싱해 로컬 윈도우 사용량 보정(`syncRemainingReqHeader`) 추가.
-  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitRateLimiter.java`
-- `UpbitChartFetcher`가 전체 요청 캔들 수 기준 필요 호출 횟수(`ceil(count / maxCandleCountPerRequest)`)를 선계산해 `UpbitRateLimiter.acquire(...)`를 선호출하도록 변경.
-  - 호출 횟수가 10을 초과하는 대용량 요청(기본 설정 기준 2000 초과)은 API 호출 전에 fail-fast(`InvalidRequest`) 처리됨.
-  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitChartFetcher.java`
-- `UpbitApiClient`에 `UpbitRateLimiter`를 주입하고, 모든 응답에서 `Remaining-Req` 헤더를 읽어 rate limiter 상태를 동기화하도록 변경.
-  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitApiClient.java`
-- 테스트 갱신:
-  - `UpbitChartFetcherPaginationTest`에 rate limiter 목 주입 및 선호출 검증 추가.
-  - 2001개 요청 시 `acquire(11)` 실패로 API 호출 없이 fail-fast 되는 시나리오 추가.
-  - 파일: `src/test/java/app/leesh/tratic/chart/infra/upbit/UpbitChartFetcherPaginationTest.java`
-- 테스트 추가:
-  - `UpbitRateLimiterTest` 신설.
-  - 범위 검증(`<=0`, `>10`), 윈도우 대기 sleep, `Remaining-Req` 동기화, 인터럽트 시 `RateLimited` 전환 케이스 추가.
-  - 파일: `src/test/java/app/leesh/tratic/chart/infra/upbit/UpbitRateLimiterTest.java`
-- `UpbitChartFetcher.fetch`에서 선행 rate limit 검증을 `rateLimiter.acquire(requiredCalls).flatMap(...)` 체인으로 정리하고,
-  배치 응답 매핑을 `res.map(mapper::toCandles)`로 리팩터링해 수동 언래핑 분기를 축소.
-  - 파일: `src/main/java/app/leesh/tratic/chart/infra/upbit/UpbitChartFetcher.java`
+## 7) 설정/테스트
+- 클라이언트 설정 키: `clients.upbit.base-url`, `clients.upbit.max-candle-count-per-request`, `clients.upbit.fast-fail-wait-threshold`, `clients.binance.base-url`, `clients.binance.max-candles-per-call`, `clients.binance.fast-fail-wait-threshold`
+- 설정 바인딩: `chart.infra.shared.ClientPropsConfig`
+- 테스트 존재(domain): `ChartTest`, `CandleTest`, `CandleSeriesTest`
+- 테스트 존재(service): `ChartServiceTest`, `ChartFetcherResolverTest`
+- 테스트 존재(fetcher): `UpbitChartFetcherPaginationTest`, `BinanceChartFetcherPaginationTest`
+- 테스트 존재(limiter): `UpbitRateLimiterTest`, `BinanceRateLimiterTest`
+- 테스트 존재(api client): `UpbitApiClientTest`, `BinanceApiClientTest` (`@Tag("external")`)
+- 테스트 존재(boot): `TraticApplicationTests`
+- 테스트 부재: `auth`, `user`, `shared`
