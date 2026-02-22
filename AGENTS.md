@@ -58,3 +58,10 @@
 - 테스트 존재(api client): `UpbitApiClientTest`, `BinanceApiClientTest` (`@Tag("external")`)
 - 테스트 존재(boot): `TraticApplicationTests`
 - 테스트 부재: `auth`, `user`, `shared`
+
+## 8) 리팩토링 정정(append-only, 2026-02-22)
+- Upbit acquire 위치 변경: `UpbitChartFetcher` -> `UpbitApiClient.fetchCandles(...)` 내부
+- Upbit fetcher 선검증: `requiredCalls=ceil(count/max)` 계산은 유지, `requiredCalls > 10`이면 `InvalidRequest`로 API 호출 전 fail-fast
+- Upbit API 호출 구조: `rateLimiter.acquire(1).flatMap(...)` 체인 후 HTTP 호출(`fetchFromApi(...)`)
+- 중간 배치 누적 중 `RateLimited` 발생 시 처리: partial chart 반환 없이 즉시 `Err(ChartFetchFailure.RateLimited)`로 종료
+- 관련 테스트 정리: `UpbitChartFetcherPaginationTest`에서 fetcher의 limiter 모킹/검증 제거(리미터는 API client 경계에서 검증)

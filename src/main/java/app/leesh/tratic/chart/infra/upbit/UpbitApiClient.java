@@ -59,6 +59,13 @@ public class UpbitApiClient {
         private Result<UpbitCandleResponse[], ChartFetchFailure> fetchCandles(@NonNull String path, String market,
                         String to, long count,
                         Long unit) {
+                return rateLimiter.acquire(1)
+                                .flatMap(ignored -> fetchFromApi(path, market, to, count, unit));
+        }
+
+        private Result<UpbitCandleResponse[], ChartFetchFailure> fetchFromApi(@NonNull String path, String market,
+                        String to, long count,
+                        Long unit) {
                 return client.get()
                                 .uri(uriBuilder -> {
                                         if (unit != null) {
