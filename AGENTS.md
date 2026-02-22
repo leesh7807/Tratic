@@ -29,10 +29,12 @@
 
 ## 5) 거래소 구현/제약
 - Upbit 페이지 크기: `clients.upbit.max-candle-count-per-request`
-- Upbit 선검증: `requiredCalls=ceil(count/max)` 계산 후 `UpbitRateLimiter.acquire(requiredCalls)`
+- Upbit 선검증: `requiredCalls=ceil(count/max)` 계산
 - Upbit fail-fast: `requiredCalls > 10`이면 `InvalidRequest` 반환(API 호출 전)
+- Upbit API 호출 구조: `UpbitApiClient.fetchCandles(...)` 내부에서 `rateLimiter.acquire(1).flatMap(...)` 체인 후 HTTP 호출(`fetchFromApi(...)`)
 - Upbit 페이지 이동: `nextTo = earliest - resolutionDuration`, 빈 배치/진전 없음 시 중단
 - Upbit 후처리: 시간 정렬 + 동일 시각 deduplicate
+- Upbit 중간 실패 처리: 배치 누적 중 `RateLimited` 발생 시 partial chart 반환 없이 즉시 `Err(ChartFetchFailure.RateLimited)`로 종료
 - Upbit 해상도 매핑: `M1/M3/M5/M15/M30/H1/H4` (D1은 day endpoint)
 - Binance 분할 상한: `clients.binance.max-candles-per-call`
 - Binance 페이지 이동: `endTime = earliest - resolutionDuration`, 빈 배치 시 중단
@@ -53,15 +55,8 @@
 - 설정 바인딩: `chart.infra.shared.ClientPropsConfig`
 - 테스트 존재(domain): `ChartTest`, `CandleTest`, `CandleSeriesTest`
 - 테스트 존재(service): `ChartServiceTest`, `ChartFetcherResolverTest`
-- 테스트 존재(fetcher): `UpbitChartFetcherPaginationTest`, `BinanceChartFetcherPaginationTest`
+- 테스트 존재(fetcher): `UpbitChartFetcherPaginationTest`, `BinanceChartFetcherPaginationTest` (Upbit fetcher의 limiter 모킹/검증 제거)
 - 테스트 존재(limiter): `UpbitRateLimiterTest`, `BinanceRateLimiterTest`
 - 테스트 존재(api client): `UpbitApiClientTest`, `BinanceApiClientTest` (`@Tag("external")`)
 - 테스트 존재(boot): `TraticApplicationTests`
 - 테스트 부재: `auth`, `user`, `shared`
-
-## 8) 리팩토링 정정(append-only, 2026-02-22)
-- Upbit acquire 위치 변경: `UpbitChartFetcher` -> `UpbitApiClient.fetchCandles(...)` 내부
-- Upbit fetcher 선검증: `requiredCalls=ceil(count/max)` 계산은 유지, `requiredCalls > 10`이면 `InvalidRequest`로 API 호출 전 fail-fast
-- Upbit API 호출 구조: `rateLimiter.acquire(1).flatMap(...)` 체인 후 HTTP 호출(`fetchFromApi(...)`)
-- 중간 배치 누적 중 `RateLimited` 발생 시 처리: partial chart 반환 없이 즉시 `Err(ChartFetchFailure.RateLimited)`로 종료
-- 관련 테스트 정리: `UpbitChartFetcherPaginationTest`에서 fetcher의 limiter 모킹/검증 제거(리미터는 API client 경계에서 검증)
