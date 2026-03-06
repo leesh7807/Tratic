@@ -1,6 +1,7 @@
 package app.leesh.tratic.analyze.controller;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,6 @@ import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
-import app.leesh.tratic.shared.Result;
 import jakarta.validation.Valid;
 
 @RestController
@@ -45,31 +45,32 @@ public class AnalyzeController {
                 request.positionPct());
 
         UUID authenticatedUserId = resolveUserId(authentication);
-        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(analyzeRequest, authenticatedUserId);
-
-        if (result instanceof Result.Ok<AnalyzeResult, AnalyzeFailure> ok) {
-            AnalyzeResult value = ok.value();
-            return ResponseEntity.ok(new AnalyzeResponseDto(
-                    value.direction(),
-                    value.trendScore(),
-                    value.volatilityScore(),
-                    value.volatilityLabel(),
-                    value.locationScore(),
-                    value.pressureScore(),
-                    value.pressureRaw(),
-                    value.pressureView()));
-        }
-
-        AnalyzeFailure failure = ((Result.Err<AnalyzeResult, AnalyzeFailure>) result).error();
-        return mapFailure(failure);
+        return analyzeService.analyze(analyzeRequest, authenticatedUserId)
+                .map(this::toResponseDto)
+                .mapError(this::toApiError)
+                .fold(
+                        ResponseEntity::ok,
+                        this::toErrorResponse);
     }
 
-    private ResponseEntity<Map<String, String>> mapFailure(AnalyzeFailure failure) {
+    private AnalyzeResponseDto toResponseDto(AnalyzeResult value) {
+        return new AnalyzeResponseDto(
+                value.direction(),
+                value.trendScore(),
+                value.volatilityScore(),
+                value.volatilityLabel(),
+                value.locationScore(),
+                value.pressureScore(),
+                value.pressureRaw(),
+                value.pressureView());
+    }
+
+    private ApiError toApiError(AnalyzeFailure failure) {
         if (failure instanceof AnalyzeFailure.InvalidInput invalidInput) {
-            return ResponseEntity.badRequest().body(Map.of("message", invalidInput.message()));
+            return new ApiError(HttpStatus.BAD_REQUEST, Map.of("message", invalidInput.message()));
         }
         if (failure instanceof AnalyzeFailure.InsufficientCandles insufficient) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
+            return new ApiError(HttpStatus.UNPROCESSABLE_ENTITY, Map.of(
                     "message", "not enough candles to analyze",
                     "required", String.valueOf(insufficient.required()),
                     "actual", String.valueOf(insufficient.actual())));
@@ -77,19 +78,23 @@ public class AnalyzeController {
 
         ChartFetchFailure cause = ((AnalyzeFailure.ChartDataUnavailable) failure).cause();
         if (cause instanceof ChartFetchFailure.InvalidRequest) {
-            return ResponseEntity.badRequest().body(Map.of("message", "invalid chart request"));
+            return new ApiError(HttpStatus.BAD_REQUEST, Map.of("message", "invalid chart request"));
         }
         if (cause instanceof ChartFetchFailure.NotFound) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "chart not found"));
+            return new ApiError(HttpStatus.NOT_FOUND, Map.of("message", "chart not found"));
         }
         if (cause instanceof ChartFetchFailure.RateLimited) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("message", "chart rate limited"));
+            return new ApiError(HttpStatus.SERVICE_UNAVAILABLE, Map.of("message", "chart rate limited"));
         }
         if (cause instanceof ChartFetchFailure.Unauthorized) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", "chart unauthorized"));
+            return new ApiError(HttpStatus.BAD_GATEWAY, Map.of("message", "chart unauthorized"));
         }
 
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of("message", "chart temporary failure"));
+        return new ApiError(HttpStatus.SERVICE_UNAVAILABLE, Map.of("message", "chart temporary failure"));
+    }
+
+    private ResponseEntity<Map<String, String>> toErrorResponse(ApiError apiError) {
+        return ResponseEntity.status(apiError.status()).body(apiError.body());
     }
 
     private UUID resolveUserId(Authentication authentication) {
@@ -110,5 +115,12 @@ public class AnalyzeController {
         }
 
         return null;
+    }
+
+    private record ApiError(HttpStatus status, Map<String, String> body) {
+        private ApiError {
+            Objects.requireNonNull(status, "status must not be null");
+            Objects.requireNonNull(body, "body must not be null");
+        }
     }
 }
