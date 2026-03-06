@@ -52,3 +52,6 @@ clients:
     base-url: "https://fapi.binance.com"
     max-candles-per-call: 1500
     fast-fail-wait-threshold: 3s
+
+analyze:
+  fetch-candle-count: 240

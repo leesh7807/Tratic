@@ -34,4 +34,8 @@ public class Chart {
     public ChartSignature chartSignature() {
         return this.sig;
     }
+
+    public CandleSeries candleSeries() {
+        return this.candleSeries;
+    }
 }

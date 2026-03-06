@@ -24,6 +24,7 @@ public class SecurityConfig {
 
                 http
                                 .addFilterBefore(traceIdFilter, SecurityContextHolderFilter.class)
+                                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/analyze/**"))
 
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(
@@ -31,7 +32,8 @@ public class SecurityConfig {
                                                                 "/index.html",
                                                                 "/static/**",
                                                                 "/favicon.ico",
-                                                                "/error**")
+                                                                "/error**",
+                                                                "/api/analyze/**")
                                                 .permitAll()
                                                 .anyRequest().authenticated())
                                 .oauth2Login(oauth -> oauth

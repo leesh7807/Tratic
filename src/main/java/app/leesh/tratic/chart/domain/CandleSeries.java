@@ -52,4 +52,8 @@ public class CandleSeries {
     public boolean isEmpty() {
         return candles.isEmpty();
     }
+
+    public List<Candle> candles() {
+        return candles;
+    }
 }
