@@ -1,5 +1,6 @@
 package app.leesh.tratic.chart.domain;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +16,10 @@ public class CandleSeries {
         this.candles = List.copyOf(candles);
     }
 
+    /**
+     * 정렬/중복 규칙을 만족하는 캔들 시리즈를 생성한다.
+     * 시간 오름차순이며 동일 시각 캔들이 없어야 한다.
+     */
     public static CandleSeries ofSorted(List<Candle> candles) {
         Objects.requireNonNull(candles, "candles must not be null");
 
@@ -45,15 +50,38 @@ public class CandleSeries {
         }
     }
 
+    /**
+     * 시리즈 길이를 반환한다.
+     */
     public int size() {
         return candles.size();
     }
 
+    /**
+     * 시리즈가 비어있는지 반환한다.
+     */
     public boolean isEmpty() {
         return candles.isEmpty();
     }
 
-    public List<Candle> candles() {
-        return candles;
+    /**
+     * 주어진 시점이 속한 버킷의 시작 시각 이전 캔들만 반환한다.
+     * 분석 시 현재 버킷 제외(look-ahead 방지) 용도로 사용한다.
+     */
+    public List<Candle> candlesBeforeBucketOf(Instant timePoint, Duration bucketDuration) {
+        Objects.requireNonNull(timePoint, "timePoint must not be null");
+        Objects.requireNonNull(bucketDuration, "bucketDuration must not be null");
+
+        long bucketMillis = bucketDuration.toMillis();
+        if (bucketMillis <= 0L) {
+            throw new IllegalArgumentException("bucketDuration must be positive");
+        }
+
+        long bucketStartMillis = Math.floorDiv(timePoint.toEpochMilli(), bucketMillis) * bucketMillis;
+        Instant bucketStart = Instant.ofEpochMilli(bucketStartMillis);
+
+        return candles.stream()
+                .filter(candle -> candle.time().isBefore(bucketStart))
+                .toList();
     }
 }

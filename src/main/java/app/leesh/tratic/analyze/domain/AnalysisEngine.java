@@ -2,12 +2,10 @@ package app.leesh.tratic.analyze.domain;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 import app.leesh.tratic.chart.domain.Candle;
-import app.leesh.tratic.chart.domain.TimeResolution;
 
 public final class AnalysisEngine {
     private static final double EPSILON = 1e-9;
@@ -24,9 +22,11 @@ public final class AnalysisEngine {
     private AnalysisEngine() {
     }
 
-    public static AnalyzeResult analyze(List<Candle> sourceCandles, Instant entryAt, TimeResolution resolution,
-            AnalyzeDirection direction) {
-        List<Candle> candles = excludeCurrentCandle(sourceCandles, entryAt, resolution);
+    /**
+     * 전처리된 캔들(현재 버킷 제외)을 입력받아 4축 분석 결과를 계산한다.
+     * 입력 캔들 길이가 부족하면 예외를 발생시킨다.
+     */
+    public static AnalyzeResult analyze(List<Candle> candles, AnalyzeDirection direction) {
         if (candles.size() < ATR_LONG + 5) {
             throw new IllegalArgumentException("not enough candles to analyze");
         }
@@ -45,16 +45,6 @@ public final class AnalysisEngine {
                 pressure.pressureScore(),
                 pressure.pressureRaw(),
                 pressure.pressureView());
-    }
-
-    private static List<Candle> excludeCurrentCandle(List<Candle> candles, Instant entryAt, TimeResolution resolution) {
-        long frameMillis = resolution.toDuration().toMillis();
-        long bucketStartMillis = Math.floorDiv(entryAt.toEpochMilli(), frameMillis) * frameMillis;
-        Instant currentBucketStart = Instant.ofEpochMilli(bucketStartMillis);
-
-        return candles.stream()
-                .filter(c -> c.time().isBefore(currentBucketStart))
-                .toList();
     }
 
     private static double calculateTrendScore(List<Candle> candles) {

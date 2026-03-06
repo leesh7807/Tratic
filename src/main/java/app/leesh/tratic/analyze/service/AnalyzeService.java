@@ -55,11 +55,11 @@ public class AnalyzeService {
         }
 
         Chart chart = ((Result.Ok<Chart, ChartFetchFailure>) chartResult).value();
-        List<Candle> candles = chart.candleSeries().candles();
+        List<Candle> candles = chart.candlesForAnalysisAt(request.entryAt());
 
         AnalyzeResult analyzed;
         try {
-            analyzed = AnalysisEngine.analyze(candles, request.entryAt(), resolution, direction);
+            analyzed = AnalysisEngine.analyze(candles, direction);
         } catch (IllegalArgumentException ex) {
             return Result.err(new AnalyzeFailure.InvalidInput(ex.getMessage()));
         }
