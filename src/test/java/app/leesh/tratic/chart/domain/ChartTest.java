@@ -38,7 +38,7 @@ public class ChartTest {
         Instant t3 = t2.plus(1, ChronoUnit.DAYS);
         Chart chart = Chart.of(sig, makeTempCandleSeries(t1, t2, t3));
 
-        List<Candle> candles = chart.candlesForAnalysisAt(t3.plus(1, ChronoUnit.HOURS));
+        List<Candle> candles = chart.candlesBeforeBucketOf(t3.plus(1, ChronoUnit.HOURS));
 
         assertEquals(List.of(t1, t2), candles.stream().map(Candle::time).toList());
     }

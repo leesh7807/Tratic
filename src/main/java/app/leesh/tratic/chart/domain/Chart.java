@@ -44,10 +44,10 @@ public class Chart {
     }
 
     /**
-     * 분석 시점 기준으로 현재 버킷 이전 캔들만 반환한다.
-     * 버킷 계산은 차트의 해상도를 기준으로 내부 위임 처리한다.
+     * 주어진 시점이 속한 버킷의 시작 시각 이전 캔들만 반환한다.
+     * 버킷 계산은 차트 해상도를 기준으로 내부 위임 처리한다.
      */
-    public List<Candle> candlesForAnalysisAt(Instant entryAt) {
-        return candleSeries.candlesBeforeBucketOf(entryAt, sig.timeResolution().toDuration());
+    public List<Candle> candlesBeforeBucketOf(Instant timePoint) {
+        return candleSeries.candlesBeforeBucketOf(timePoint, sig.timeResolution().toDuration());
     }
 }

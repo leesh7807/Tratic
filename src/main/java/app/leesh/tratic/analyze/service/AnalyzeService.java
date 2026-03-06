@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
 import app.leesh.tratic.analyze.domain.AnalysisEngine;
+import app.leesh.tratic.analyze.domain.AnalysisEngineParams;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.Chart;
@@ -25,12 +26,15 @@ import app.leesh.tratic.shared.Result;
 public class AnalyzeService {
     private final ChartService chartService;
     private final AnalyzePolicy analyzePolicy;
+    private final AnalysisEnginePolicy analysisEnginePolicy;
     private final AnalysisResultRepository analysisResultRepository;
 
     public AnalyzeService(ChartService chartService, AnalyzePolicy analyzePolicy,
+            AnalysisEnginePolicy analysisEnginePolicy,
             AnalysisResultRepository analysisResultRepository) {
         this.chartService = chartService;
         this.analyzePolicy = analyzePolicy;
+        this.analysisEnginePolicy = analysisEnginePolicy;
         this.analysisResultRepository = analysisResultRepository;
     }
 
@@ -55,11 +59,16 @@ public class AnalyzeService {
         }
 
         Chart chart = ((Result.Ok<Chart, ChartFetchFailure>) chartResult).value();
-        List<Candle> candles = chart.candlesForAnalysisAt(request.entryAt());
+        List<Candle> candles = chart.candlesBeforeBucketOf(request.entryAt());
+        AnalysisEngineParams engineParams = analysisEnginePolicy.resolve(resolution);
+        int minimumCandles = AnalysisEngine.minimumRequiredCandles(engineParams);
+        if (candles.size() < minimumCandles) {
+            return Result.err(new AnalyzeFailure.InsufficientCandles(minimumCandles, candles.size()));
+        }
 
         AnalyzeResult analyzed;
         try {
-            analyzed = AnalysisEngine.analyze(candles, direction);
+            analyzed = AnalysisEngine.analyze(candles, direction, engineParams);
         } catch (IllegalArgumentException ex) {
             return Result.err(new AnalyzeFailure.InvalidInput(ex.getMessage()));
         }

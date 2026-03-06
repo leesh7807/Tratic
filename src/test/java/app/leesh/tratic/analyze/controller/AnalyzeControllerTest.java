@@ -89,6 +89,18 @@ public class AnalyzeControllerTest {
         assertInstanceOf(Map.class, response.getBody());
     }
 
+    @Test
+    public void analyze_insufficient_candles_maps_unprocessable_entity() {
+        AnalyzeRequestDto request = requestDto();
+        when(analyzeService.analyze(any(), eq(null)))
+                .thenReturn(Result.err(new AnalyzeFailure.InsufficientCandles(105, 80)));
+
+        ResponseEntity<?> response = analyzeController.analyze(request, null);
+
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
+        assertInstanceOf(Map.class, response.getBody());
+    }
+
     private AnalyzeRequestDto requestDto() {
         return new AnalyzeRequestDto(
                 app.leesh.tratic.chart.domain.Market.BINANCE,

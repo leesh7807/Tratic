@@ -68,6 +68,12 @@ public class AnalyzeController {
         if (failure instanceof AnalyzeFailure.InvalidInput invalidInput) {
             return ResponseEntity.badRequest().body(Map.of("message", invalidInput.message()));
         }
+        if (failure instanceof AnalyzeFailure.InsufficientCandles insufficient) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(Map.of(
+                    "message", "not enough candles to analyze",
+                    "required", String.valueOf(insufficient.required()),
+                    "actual", String.valueOf(insufficient.actual())));
+        }
 
         ChartFetchFailure cause = ((AnalyzeFailure.ChartDataUnavailable) failure).cause();
         if (cause instanceof ChartFetchFailure.InvalidRequest) {

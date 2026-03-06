@@ -55,3 +55,28 @@ clients:
 
 analyze:
   fetch-candle-count: 240
+  engine:
+    defaults:
+      epsilon: 1.0e-9
+      trend-n: 20
+      trend-fast-ema: 10
+      trend-slow-ema: 30
+      atr-floor-ratio: 0.1
+      atr-floor-min: 1.0e-6
+      volatility-atr-period: 20
+      volatility-z-window: 30
+      volatility-z-score-scale: 3.0
+      volatility-high-threshold: 1.45
+      volatility-low-threshold: 0.65
+      location-window: 20
+      atr-short-period: 14
+      atr-long-period: 100
+      minimum-extra-candles: 5
+      pressure-volume-ema-period: 20
+      pressure-view-ema-period: 5
+      pressure-pos-close-weight: 0.6
+      pressure-body-weight: 0.3
+      pressure-wick-diff-weight: 0.1
+      pressure-volume-weight-min: 0.5
+      pressure-volume-weight-max: 1.5
+    by-resolution: {}

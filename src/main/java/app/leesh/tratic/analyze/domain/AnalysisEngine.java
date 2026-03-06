@@ -8,17 +8,6 @@ import java.util.List;
 import app.leesh.tratic.chart.domain.Candle;
 
 public final class AnalysisEngine {
-    private static final double EPSILON = 1e-9;
-    private static final int TREND_N = 20;
-    private static final int TREND_FAST_EMA = 10;
-    private static final int TREND_SLOW_EMA = 30;
-    private static final int VOL_N = 20;
-    private static final int VOL_Z_WINDOW = 30;
-    private static final int LOCATION_N = 20;
-    private static final int ATR_SHORT = 14;
-    private static final int ATR_LONG = 100;
-    private static final int PRESSURE_VIEW_EMA = 5;
-
     private AnalysisEngine() {
     }
 
@@ -26,15 +15,15 @@ public final class AnalysisEngine {
      * 전처리된 캔들(현재 버킷 제외)을 입력받아 4축 분석 결과를 계산한다.
      * 입력 캔들 길이가 부족하면 예외를 발생시킨다.
      */
-    public static AnalyzeResult analyze(List<Candle> candles, AnalyzeDirection direction) {
-        if (candles.size() < ATR_LONG + 5) {
+    public static AnalyzeResult analyze(List<Candle> candles, AnalyzeDirection direction, AnalysisEngineParams params) {
+        if (candles.size() < minimumRequiredCandles(params)) {
             throw new IllegalArgumentException("not enough candles to analyze");
         }
 
-        double trendScore = calculateTrendScore(candles);
-        VolatilityMetrics volatility = calculateVolatility(candles);
-        double locationScore = calculateLocationScore(candles);
-        PressureMetrics pressure = calculatePressure(candles);
+        double trendScore = calculateTrendScore(candles, params);
+        VolatilityMetrics volatility = calculateVolatility(candles, params);
+        double locationScore = calculateLocationScore(candles, params);
+        PressureMetrics pressure = calculatePressure(candles, params);
 
         return new AnalyzeResult(
                 direction,
@@ -47,44 +36,48 @@ public final class AnalysisEngine {
                 pressure.pressureView());
     }
 
-    private static double calculateTrendScore(List<Candle> candles) {
+    public static int minimumRequiredCandles(AnalysisEngineParams params) {
+        return params.minimumRequiredCandles();
+    }
+
+    private static double calculateTrendScore(List<Candle> candles, AnalysisEngineParams params) {
         List<Double> closes = closes(candles);
-        double atrN = atr(candles, TREND_N);
-        double atrFloor = Math.max(atrN * 0.1, 1e-6);
+        double atrN = atr(candles, params.trendN());
+        double atrFloor = Math.max(atrN * params.atrFloorRatio(), params.atrFloorMin());
         double atrBase = Math.max(atrN, atrFloor);
 
-        List<Double> closeTail = tail(closes, TREND_N);
-        double trendLr = linearRegressionSlope(closeTail) / (atrBase + EPSILON);
+        List<Double> closeTail = tail(closes, params.trendN());
+        double trendLr = linearRegressionSlope(closeTail, params.epsilon()) / (atrBase + params.epsilon());
 
-        double emaFast = ema(closes, TREND_FAST_EMA);
-        double emaSlow = ema(closes, TREND_SLOW_EMA);
-        double trendMa = (emaFast - emaSlow) / (atrBase + EPSILON);
+        double emaFast = ema(closes, params.trendFastEma());
+        double emaSlow = ema(closes, params.trendSlowEma());
+        double trendMa = (emaFast - emaSlow) / (atrBase + params.epsilon());
 
         double trend = 0.5 * trendLr + 0.5 * trendMa;
         return 100.0 * clamp(trend, -1.0, 1.0);
     }
 
-    private static VolatilityMetrics calculateVolatility(List<Candle> candles) {
-        List<Double> ratios = atrToSmaRatios(candles, VOL_N);
-        List<Double> ratioTail = tail(ratios, VOL_Z_WINDOW);
+    private static VolatilityMetrics calculateVolatility(List<Candle> candles, AnalysisEngineParams params) {
+        List<Double> ratios = atrToSmaRatios(candles, params.volatilityAtrPeriod(), params.epsilon());
+        List<Double> ratioTail = tail(ratios, params.volatilityZWindow());
         double latest = ratioTail.get(ratioTail.size() - 1);
         double mean = average(ratioTail);
         double std = standardDeviation(ratioTail, mean);
-        double z = (latest - mean) / (std + EPSILON);
-        double volatilityScore = 100.0 * clamp(z / 3.0, 0.0, 1.0);
+        double z = (latest - mean) / (std + params.epsilon());
+        double volatilityScore = 100.0 * clamp(z / params.volatilityZScoreScale(), 0.0, 1.0);
 
-        if (candles.size() < ATR_LONG + 1) {
+        if (candles.size() < params.atrLongPeriod() + 1) {
             return new VolatilityMetrics(volatilityScore, VolatilityLabel.UNKNOWN);
         }
 
-        double shortVol = atr(candles, ATR_SHORT);
-        double longVol = atr(candles, ATR_LONG);
-        double ratio = shortVol / (longVol + EPSILON);
+        double shortVol = atr(candles, params.atrShortPeriod());
+        double longVol = atr(candles, params.atrLongPeriod());
+        double ratio = shortVol / (longVol + params.epsilon());
 
         VolatilityLabel label;
-        if (ratio > 1.45) {
+        if (ratio > params.volatilityHighThreshold()) {
             label = VolatilityLabel.HIGH;
-        } else if (ratio < 0.65) {
+        } else if (ratio < params.volatilityLowThreshold()) {
             label = VolatilityLabel.LOW;
         } else {
             label = VolatilityLabel.MID;
@@ -93,18 +86,18 @@ public final class AnalysisEngine {
         return new VolatilityMetrics(volatilityScore, label);
     }
 
-    private static double calculateLocationScore(List<Candle> candles) {
-        List<Candle> tail = tailCandles(candles, LOCATION_N);
+    private static double calculateLocationScore(List<Candle> candles, AnalysisEngineParams params) {
+        List<Candle> tail = tailCandles(candles, params.locationWindow());
         double close = toDouble(tail.get(tail.size() - 1).c());
         double lowest = tail.stream().map(Candle::l).mapToDouble(AnalysisEngine::toDouble).min().orElse(close);
         double highest = tail.stream().map(Candle::h).mapToDouble(AnalysisEngine::toDouble).max().orElse(close);
 
-        return 100.0 * ((close - lowest) / (highest - lowest + EPSILON));
+        return 100.0 * ((close - lowest) / (highest - lowest + params.epsilon()));
     }
 
-    private static PressureMetrics calculatePressure(List<Candle> candles) {
+    private static PressureMetrics calculatePressure(List<Candle> candles, AnalysisEngineParams params) {
         List<Double> volumeSeries = candles.stream().map(Candle::v).map(AnalysisEngine::toDouble).toList();
-        double volumeEma = ema(volumeSeries, 20);
+        double volumeEma = ema(volumeSeries, params.pressureVolumeEmaPeriod());
 
         List<Double> rawSeries = new ArrayList<>();
         for (Candle candle : candles) {
@@ -112,7 +105,7 @@ public final class AnalysisEngine {
             double low = toDouble(candle.l());
             double open = toDouble(candle.o());
             double close = toDouble(candle.c());
-            double range = high - low + EPSILON;
+            double range = high - low + params.epsilon();
 
             double posC = 2.0 * ((close - low) / range) - 1.0;
             double body = (close - open) / range;
@@ -120,28 +113,33 @@ public final class AnalysisEngine {
             double lowerWick = Math.min(open, close) - low;
             double wickDiff = (lowerWick - upperWick) / range;
 
-            double raw = 0.6 * posC + 0.3 * body + 0.1 * wickDiff;
+            double raw = params.pressurePosCloseWeight() * posC
+                    + params.pressureBodyWeight() * body
+                    + params.pressureWickDiffWeight() * wickDiff;
             rawSeries.add(raw);
         }
 
         double latestVolume = volumeSeries.get(volumeSeries.size() - 1);
-        double volWeight = clamp(latestVolume / (volumeEma + EPSILON), 0.5, 1.5);
+        double volWeight = clamp(
+                latestVolume / (volumeEma + params.epsilon()),
+                params.pressureVolumeWeightMin(),
+                params.pressureVolumeWeightMax());
         double pressureRaw = volWeight * rawSeries.get(rawSeries.size() - 1);
         double pressureScore = 100.0 * clamp(pressureRaw, -1.0, 1.0);
 
-        double pressureView = ema(tail(rawSeries, PRESSURE_VIEW_EMA), PRESSURE_VIEW_EMA);
+        double pressureView = ema(tail(rawSeries, params.pressureViewEmaPeriod()), params.pressureViewEmaPeriod());
 
         return new PressureMetrics(pressureScore, pressureRaw, pressureView);
     }
 
-    private static List<Double> atrToSmaRatios(List<Candle> candles, int n) {
+    private static List<Double> atrToSmaRatios(List<Candle> candles, int n, double epsilon) {
         List<Double> ratios = new ArrayList<>();
         for (int i = n + 1; i <= candles.size(); i++) {
             List<Candle> window = candles.subList(0, i);
             double atr = atr(window, n);
             List<Double> closes = closes(window);
             double sma = average(tail(closes, n));
-            ratios.add(atr / (sma + EPSILON));
+            ratios.add(atr / (sma + epsilon));
         }
         return ratios;
     }
@@ -169,7 +167,7 @@ public final class AnalysisEngine {
         return candles.stream().map(Candle::c).map(AnalysisEngine::toDouble).toList();
     }
 
-    private static double linearRegressionSlope(List<Double> ys) {
+    private static double linearRegressionSlope(List<Double> ys, double epsilon) {
         int n = ys.size();
         double sumX = 0.0;
         double sumY = 0.0;
@@ -187,7 +185,7 @@ public final class AnalysisEngine {
 
         double numerator = (n * sumXY) - (sumX * sumY);
         double denominator = (n * sumXX) - (sumX * sumX);
-        return numerator / (denominator + EPSILON);
+        return numerator / (denominator + epsilon);
     }
 
     private static double ema(List<Double> series, int period) {

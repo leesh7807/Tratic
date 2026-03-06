@@ -66,7 +66,7 @@ public class CandleSeries {
 
     /**
      * 주어진 시점이 속한 버킷의 시작 시각 이전 캔들만 반환한다.
-     * 분석 시 현재 버킷 제외(look-ahead 방지) 용도로 사용한다.
+     * 현재 버킷을 제외한 과거 구간 조회가 필요할 때 사용한다.
      */
     public List<Candle> candlesBeforeBucketOf(Instant timePoint, Duration bucketDuration) {
         Objects.requireNonNull(timePoint, "timePoint must not be null");

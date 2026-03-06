@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
+import app.leesh.tratic.analyze.domain.AnalysisEngineParams;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.CandleSeries;
@@ -41,6 +42,9 @@ public class AnalyzeServiceTest {
     private AnalyzePolicy analyzePolicy;
 
     @Mock
+    private AnalysisEnginePolicy analysisEnginePolicy;
+
+    @Mock
     private AnalysisResultRepository analysisResultRepository;
 
     @InjectMocks
@@ -59,6 +63,7 @@ public class AnalyzeServiceTest {
                 bd("30"));
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
+        when(analysisEnginePolicy.resolve(TimeResolution.M15)).thenReturn(defaultEngineParams());
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.BINANCE, "BTCUSDT")));
 
         Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
@@ -80,6 +85,7 @@ public class AnalyzeServiceTest {
                 null);
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
+        when(analysisEnginePolicy.resolve(TimeResolution.M15)).thenReturn(defaultEngineParams());
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.UPBIT, "KRW-BTC")));
 
         Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
@@ -130,6 +136,29 @@ public class AnalyzeServiceTest {
         assertInstanceOf(AnalyzeFailure.ChartDataUnavailable.class, failure);
     }
 
+    @Test
+    public void analyze_returns_insufficient_candles_when_collected_data_is_too_short() {
+        AnalyzeRequest req = new AnalyzeRequest(
+                Market.BINANCE,
+                "BTCUSDT",
+                TimeResolution.M15,
+                Instant.parse("2026-01-10T10:00:00Z"),
+                bd("100"),
+                bd("95"),
+                bd("110"),
+                bd("50"));
+
+        when(analyzePolicy.fetchCandleCount()).thenReturn(120L);
+        when(analysisEnginePolicy.resolve(TimeResolution.M15)).thenReturn(defaultEngineParams());
+        when(chartService.collectChart(any())).thenReturn(Result.ok(sampleShortChart(Market.BINANCE, "BTCUSDT")));
+
+        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
+
+        assertInstanceOf(Result.Err.class, result);
+        AnalyzeFailure failure = ((Result.Err<AnalyzeResult, AnalyzeFailure>) result).error();
+        assertInstanceOf(AnalyzeFailure.InsufficientCandles.class, failure);
+    }
+
     private Chart sampleChart(Market market, String symbol) {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
         List<Candle> candles = new ArrayList<>();
@@ -149,6 +178,53 @@ public class AnalyzeServiceTest {
 
         ChartSignature signature = new ChartSignature(market, new Symbol(symbol), TimeResolution.M15);
         return Chart.of(signature, CandleSeries.ofSorted(candles));
+    }
+
+    private Chart sampleShortChart(Market market, String symbol) {
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        List<Candle> candles = new ArrayList<>();
+        for (int i = 0; i < 40; i++) {
+            BigDecimal open = bd(100 + i * 0.1);
+            BigDecimal close = bd(100 + i * 0.1 + (i % 3) * 0.02);
+            BigDecimal high = close.max(open).add(bd("0.3"));
+            BigDecimal low = close.min(open).subtract(bd("0.3"));
+            candles.add(new Candle(
+                    start.plusSeconds(i * 15L * 60L),
+                    open,
+                    high,
+                    low,
+                    close,
+                    bd(1000 + i * 10)));
+        }
+
+        ChartSignature signature = new ChartSignature(market, new Symbol(symbol), TimeResolution.M15);
+        return Chart.of(signature, CandleSeries.ofSorted(candles));
+    }
+
+    private AnalysisEngineParams defaultEngineParams() {
+        return new AnalysisEngineParams(
+                1e-9,
+                20,
+                10,
+                30,
+                0.1,
+                1e-6,
+                20,
+                30,
+                3.0,
+                1.45,
+                0.65,
+                20,
+                14,
+                100,
+                5,
+                20,
+                5,
+                0.6,
+                0.3,
+                0.1,
+                0.5,
+                1.5);
     }
 
     private BigDecimal bd(String value) {
