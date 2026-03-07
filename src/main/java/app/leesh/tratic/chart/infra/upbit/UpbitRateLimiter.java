@@ -99,6 +99,21 @@ public class UpbitRateLimiter {
         usedRequestsInWindow = Math.max(usedRequestsInWindow, usedFromHeader);
     }
 
+    public synchronized Duration estimateRetryAfter(int requestCount) {
+        if (requestCount <= 0 || requestCount > MAX_REQUESTS_PER_SECOND) {
+            return null;
+        }
+
+        Instant now = clock.instant();
+        rotateWindowIfNeeded(now);
+        if (usedRequestsInWindow + requestCount <= MAX_REQUESTS_PER_SECOND) {
+            return Duration.ZERO;
+        }
+
+        Duration retryAfter = Duration.between(now, windowStart.plus(WINDOW_SIZE));
+        return retryAfter.isNegative() ? Duration.ZERO : retryAfter;
+    }
+
     private void rotateWindowIfNeeded(Instant now) {
         if (!now.isBefore(windowStart.plus(WINDOW_SIZE))) {
             windowStart = now;

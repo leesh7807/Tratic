@@ -1,6 +1,12 @@
 package app.leesh.tratic.chart.infra.binance;
 
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -8,8 +14,8 @@ import org.springframework.web.client.RestClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.ChartSignature;
+import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
@@ -23,8 +29,14 @@ public class BinanceApiClient {
     private final ObjectMapper om;
     private final BinanceRateLimiter rateLimiter;
     private final int maxCandlesPerCall;
+    private final Clock clock;
 
-    public BinanceApiClient(RestClient.Builder builder, BinanceProps props, ObjectMapper om, BinanceRateLimiter rateLimiter) {
+    public BinanceApiClient(
+            RestClient.Builder builder,
+            BinanceProps props,
+            ObjectMapper om,
+            BinanceRateLimiter rateLimiter,
+            Clock clock) {
         this.client = builder
                 .baseUrl(props.baseUrl())
                 .defaultHeader("X-Client-Name", "binance")
@@ -32,6 +44,7 @@ public class BinanceApiClient {
         this.om = om;
         this.rateLimiter = rateLimiter;
         this.maxCandlesPerCall = props.maxCandlesPerCall();
+        this.clock = clock;
         if (this.maxCandlesPerCall <= 0) {
             throw new IllegalArgumentException("clients.binance.max-candles-per-call must be positive");
         }
@@ -48,7 +61,8 @@ public class BinanceApiClient {
                 .flatMap(ignored -> fetchFromApi(symbol, interval, to, limit));
     }
 
-    private Result<BinanceCandleResponse[], ChartFetchFailure> fetchFromApi(String symbol, String interval, long to, int limit) {
+    private Result<BinanceCandleResponse[], ChartFetchFailure> fetchFromApi(
+            String symbol, String interval, long to, int limit) {
         return client.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/fapi/v1/klines")
@@ -74,11 +88,41 @@ public class BinanceApiClient {
                         rawMessage = "failed to parse binance error body";
                     }
                     BinanceErrorType binanceType = BinanceErrorType.from(status, rawMessage);
-                    ChartFetchFailure failure = binanceType.toFailure(Market.BINANCE, null);
+                    Duration retryAfter = null;
+                    if (binanceType == BinanceErrorType.RATE_LIMITED) {
+                        retryAfter = resolveRetryAfter(res.getHeaders().getFirst("Retry-After"),
+                                rateLimiter.estimateRetryAfter(calculateWeight(limit)), clock.instant());
+                    }
+                    ChartFetchFailure failure = binanceType.toFailure(Market.BINANCE, retryAfter);
                     log.debug("OUT ERR [binance] status={} uri={} rawMessage={}", status, req.getURI(), rawMessage);
-                    // retry-after 계산 없이 상위 정책 폴백에 맡기는 상태
                     return Result.err(failure);
                 });
+    }
+
+    static Duration resolveRetryAfter(String retryAfterHeader, Duration fallbackRetryAfter, Instant now) {
+        Duration headerRetryAfter = parseRetryAfterHeader(retryAfterHeader, now);
+        return headerRetryAfter != null ? headerRetryAfter : fallbackRetryAfter;
+    }
+
+    private static Duration parseRetryAfterHeader(String retryAfterHeader, Instant now) {
+        if (retryAfterHeader == null || retryAfterHeader.isBlank()) {
+            return null;
+        }
+
+        try {
+            long seconds = Long.parseLong(retryAfterHeader.trim());
+            return seconds < 0 ? Duration.ZERO : Duration.ofSeconds(seconds);
+        } catch (NumberFormatException ignore) {
+            // Fall through to RFC-1123 parsing.
+        }
+
+        try {
+            Instant retryAt = ZonedDateTime.parse(retryAfterHeader, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
+            Duration retryAfter = Duration.between(now, retryAt);
+            return retryAfter.isNegative() ? Duration.ZERO : retryAfter;
+        } catch (DateTimeParseException ignore) {
+            return null;
+        }
     }
 
     static int calculateWeight(int limit) {

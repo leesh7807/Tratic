@@ -21,6 +21,7 @@
 - Upbit/Binance 모두 페이지 수집 후 **시간 오름차순 정렬 + 타임스탬프 deduplicate**를 수행한다.
 - Binance는 `max-candles-per-call`을 설정으로 강제하며, 요청 `count`가 상한을 초과하면 즉시 `InvalidRequest`로 하드 fail-fast 한다.
 - 페이지 수집 중 `RateLimited`가 발생하면 partial chart를 반환하지 않고 즉시 실패로 종료한다.
+- 거래소 `429`의 `retryAfter`는 응답 `Retry-After` 헤더를 우선 사용하고, 헤더가 없으면 내부 레이트리미터 계산값으로 보강한다.
 - 배치 실행 중 중간 실패가 발생해도 선점한 limiter 용량은 소진된 것으로 간주한다(롤백 없음).
 - 레이트리미터는 거래소별 요청 단위(Upbit: req/sec, Binance: weight/min)를 검증하며, 인터럽트는 `RateLimited`로 처리한다.
 - fast-fail 기준은 거래소 공통으로 `대기시간 3초 이상이면 실패`로 정렬한다.

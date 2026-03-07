@@ -98,6 +98,18 @@ class BinanceRateLimiterTest {
         assertInstanceOf(ChartFetchFailure.InvalidRequest.class, tooLargeErr.error());
     }
 
+    @Test
+    void estimateRetryAfter_usesCurrentWindowState() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
+        RecordingSleeper sleeper = new RecordingSleeper();
+        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
+
+        assertInstanceOf(Result.Ok.class, limiter.acquire(6000));
+        clock.setInstant(Instant.parse("2026-01-01T00:00:05Z"));
+
+        assertEquals(Duration.ofSeconds(55), limiter.estimateRetryAfter(10));
+    }
+
     private static BinanceProps props(Duration fastFailWaitThreshold) {
         BinanceProps props = org.mockito.Mockito.mock(BinanceProps.class);
         org.mockito.Mockito.when(props.fastFailWaitThreshold()).thenReturn(fastFailWaitThreshold);

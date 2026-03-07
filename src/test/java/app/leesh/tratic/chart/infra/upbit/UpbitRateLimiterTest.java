@@ -100,6 +100,18 @@ class UpbitRateLimiterTest {
         Thread.interrupted();
     }
 
+    @Test
+    void estimateRetryAfter_usesCurrentWindowState() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
+        RecordingSleeper sleeper = new RecordingSleeper(clock);
+        UpbitRateLimiter limiter = new UpbitRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
+
+        assertInstanceOf(Result.Ok.class, limiter.acquire(10));
+        clock.setInstant(Instant.parse("2026-01-01T00:00:00.250Z"));
+
+        assertEquals(Duration.ofMillis(750), limiter.estimateRetryAfter(1));
+    }
+
     private static UpbitProps props(Duration fastFailWaitThreshold) {
         UpbitProps props = org.mockito.Mockito.mock(UpbitProps.class);
         org.mockito.Mockito.when(props.fastFailWaitThreshold()).thenReturn(fastFailWaitThreshold);

@@ -69,6 +69,21 @@ public class BinanceRateLimiter {
         return Result.ok(null);
     }
 
+    public synchronized Duration estimateRetryAfter(int requestWeight) {
+        if (requestWeight <= 0 || requestWeight > MAX_WEIGHT_PER_MINUTE) {
+            return null;
+        }
+
+        Instant now = clock.instant();
+        rotateWindowIfNeeded(now);
+        if (usedWeightInWindow + requestWeight <= MAX_WEIGHT_PER_MINUTE) {
+            return Duration.ZERO;
+        }
+
+        Duration retryAfter = Duration.between(now, windowStart.plus(WINDOW_SIZE));
+        return retryAfter.isNegative() ? Duration.ZERO : retryAfter;
+    }
+
     private void rotateWindowIfNeeded(Instant now) {
         if (!now.isBefore(windowStart.plus(WINDOW_SIZE))) {
             windowStart = now;
