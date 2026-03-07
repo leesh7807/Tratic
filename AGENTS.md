@@ -9,6 +9,8 @@
 - 도메인 계층은 인프라를 참조하지 않는다.
 - 외부 연동 실패는 도메인 실패 모델(`Result<T, E>`, 실패 타입)로 변환해 상위 계층으로 전달한다.
 - 거래소(Upbit/Binance)별 제약은 각 어댑터 내부에서 흡수하고, 서비스 계층은 시장별 분기 로직을 최소화한다.
+- 구현/수정 전에는 현재 도메인 내부만 보지 말고 `src/main/java/app/leesh/tratic/shared/**`와 해당 도메인의 `infra/shared/**`를 함께 확인한다.
+- 별도 도메인 결정이 없더라도 공통 HTTP 클라이언트, 시간/슬립, 보안, 설정 프로퍼티 바인딩은 `shared/config`와 각 도메인 `infra/shared`를 기준으로 재사용/확장 여부를 먼저 판단한다.
 
 ## 차트 수집 도메인 결정
 - 차트 수집 엔트리는 `ChartService.collectChart(...)`이며 결과는 `Result<Chart, ChartFetchFailure>`를 사용한다.
