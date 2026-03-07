@@ -1,10 +1,9 @@
 package app.leesh.tratic.chart.infra.binance;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.time.Instant;
 
 import org.springframework.stereotype.Component;
 
@@ -35,37 +34,21 @@ public class BinanceChartFetcher implements ChartFetcher {
     @Override
     public Result<Chart, ChartFetchFailure> fetch(ChartFetchRequest req) {
         ChartSignature sig = req.sig();
+        if (req.count() > maxCandlesPerCall) {
+            return Result.err(new ChartFetchFailure.InvalidRequest(Market.BINANCE));
+        }
+
         String symbol = sig.symbol().value();
         String interval = parseTimeResolution(sig.timeResolution());
-        Duration step = sig.timeResolution().toDuration();
-        long remaining = req.count();
-        long to = req.asOf().toEpochMilli();
+        int limit = (int) req.count();
+        Result<BinanceCandleResponse[], ChartFetchFailure> res = apiClient.fetchCandlesTo(sig, symbol, interval,
+                req.asOf().toEpochMilli(), limit);
 
-        List<Candle> candles = new ArrayList<>();
-        while (remaining > 0) {
-            int limit = (int) Math.min(maxCandlesPerCall, remaining);
-            Result<BinanceCandleResponse[], ChartFetchFailure> res = apiClient.fetchCandlesTo(sig, symbol, interval,
-                    to, limit);
-
-            BinanceCandleResponse[] body;
-            if (res instanceof Result.Ok<BinanceCandleResponse[], ChartFetchFailure> ok) {
-                body = ok.value();
-            } else {
-                var err = (Result.Err<BinanceCandleResponse[], ChartFetchFailure>) res;
-                return Result.err(err.error());
-            }
-
-            List<Candle> batch = mapper.toCandles(body);
-            candles.addAll(batch);
-
-            if (batch.isEmpty()) {
-                break;
-            }
-
-            Instant earliest = batch.get(0).time();
-            to = earliest.minus(step).toEpochMilli();
-            remaining -= batch.size();
+        if (res instanceof Result.Err<BinanceCandleResponse[], ChartFetchFailure> err) {
+            return Result.err(err.error());
         }
+
+        List<Candle> candles = mapper.toCandles(((Result.Ok<BinanceCandleResponse[], ChartFetchFailure>) res).value());
 
         List<Candle> sorted = candles.stream()
                 .sorted(Comparator.comparing(Candle::time))

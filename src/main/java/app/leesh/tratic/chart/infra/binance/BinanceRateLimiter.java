@@ -52,7 +52,7 @@ public class BinanceRateLimiter {
             retryAfter = Duration.ZERO;
         }
 
-        if (retryAfter.compareTo(fastFailWaitThreshold) > 0) {
+        if (retryAfter.compareTo(fastFailWaitThreshold) >= 0) {
             return Result.err(new ChartFetchFailure.RateLimited(Market.BINANCE, retryAfter));
         }
 

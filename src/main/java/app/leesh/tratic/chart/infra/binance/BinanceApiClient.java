@@ -22,6 +22,7 @@ public class BinanceApiClient {
     private final RestClient client;
     private final ObjectMapper om;
     private final BinanceRateLimiter rateLimiter;
+    private final int maxCandlesPerCall;
 
     public BinanceApiClient(RestClient.Builder builder, BinanceProps props, ObjectMapper om, BinanceRateLimiter rateLimiter) {
         this.client = builder
@@ -30,11 +31,15 @@ public class BinanceApiClient {
                 .build();
         this.om = om;
         this.rateLimiter = rateLimiter;
+        this.maxCandlesPerCall = props.maxCandlesPerCall();
+        if (this.maxCandlesPerCall <= 0) {
+            throw new IllegalArgumentException("clients.binance.max-candles-per-call must be positive");
+        }
     }
 
     public Result<BinanceCandleResponse[], ChartFetchFailure> fetchCandlesTo(ChartSignature sig, String symbol,
             String interval, long to, int limit) {
-        if (limit <= 0 || limit > 1500) {
+        if (limit <= 0 || limit > maxCandlesPerCall) {
             return Result.err(new ChartFetchFailure.InvalidRequest(Market.BINANCE));
         }
 

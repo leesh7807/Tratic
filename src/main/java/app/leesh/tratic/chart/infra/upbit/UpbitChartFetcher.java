@@ -23,11 +23,14 @@ import app.leesh.tratic.shared.Result;
 @Component
 public class UpbitChartFetcher implements ChartFetcher {
     private final UpbitApiClient apiClient;
+    private final UpbitRateLimiter rateLimiter;
     private final UpbitCandleResponseMapper mapper;
     private final int maxCandleCountPerRequest;
 
-    public UpbitChartFetcher(UpbitApiClient apiClient, UpbitCandleResponseMapper mapper, UpbitProps props) {
+    public UpbitChartFetcher(UpbitApiClient apiClient, UpbitRateLimiter rateLimiter, UpbitCandleResponseMapper mapper,
+            UpbitProps props) {
         this.apiClient = apiClient;
+        this.rateLimiter = rateLimiter;
         this.mapper = mapper;
         this.maxCandleCountPerRequest = props.maxCandleCountPerRequest();
         if (this.maxCandleCountPerRequest <= 0) {
@@ -40,6 +43,11 @@ public class UpbitChartFetcher implements ChartFetcher {
         int requiredCalls = calculateRequiredCalls(req.count());
         if (requiredCalls > 10) {
             return Result.err(new ChartFetchFailure.InvalidRequest(Market.UPBIT));
+        }
+
+        Result<Void, ChartFetchFailure> acquired = rateLimiter.acquire(requiredCalls);
+        if (acquired instanceof Result.Err<Void, ChartFetchFailure> err) {
+            return Result.err(err.error());
         }
         return fetchCandles(req);
     }

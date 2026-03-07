@@ -54,7 +54,7 @@ clients:
     fast-fail-wait-threshold: 3s
 
 analyze:
-  fetch-candle-count: 240
+  fetch-candle-count: 256
   engine:
     defaults:
       epsilon: 1.0e-9

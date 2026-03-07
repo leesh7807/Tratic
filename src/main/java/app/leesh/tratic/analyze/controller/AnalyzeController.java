@@ -94,7 +94,7 @@ public class AnalyzeController {
     }
 
     private ResponseEntity<Map<String, String>> toErrorResponse(ApiError apiError) {
-        return ResponseEntity.status(apiError.status()).body(apiError.body());
+        return ResponseEntity.status(apiError.status().value()).body(apiError.body());
     }
 
     private UUID resolveUserId(Authentication authentication) {

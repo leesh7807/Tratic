@@ -51,7 +51,7 @@ class BinanceRateLimiterTest {
     }
 
     @Test
-    void acquire_sleepsWhenExpectedWaitIsThreeSecondsOrLess() {
+    void acquire_fastFailsWhenExpectedWaitIsExactlyThreeSeconds() {
         MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
         RecordingSleeper sleeper = new RecordingSleeper(clock);
         BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
@@ -61,8 +61,23 @@ class BinanceRateLimiterTest {
         clock.setInstant(Instant.parse("2026-01-01T00:00:57Z"));
         Result<Void, ChartFetchFailure> result = limiter.acquire(10);
 
+        assertInstanceOf(Result.Err.class, result);
+        assertTrue(sleeper.totalSlept().isZero());
+    }
+
+    @Test
+    void acquire_sleepsWhenExpectedWaitIsLessThanThreeSeconds() {
+        MutableClock clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
+        RecordingSleeper sleeper = new RecordingSleeper(clock);
+        BinanceRateLimiter limiter = new BinanceRateLimiter(clock, sleeper, props(Duration.ofSeconds(3)));
+
+        assertInstanceOf(Result.Ok.class, limiter.acquire(6000));
+
+        clock.setInstant(Instant.parse("2026-01-01T00:00:58Z"));
+        Result<Void, ChartFetchFailure> result = limiter.acquire(10);
+
         assertInstanceOf(Result.Ok.class, result);
-        assertEquals(Duration.ofSeconds(3), sleeper.totalSlept());
+        assertEquals(Duration.ofSeconds(2), sleeper.totalSlept());
     }
 
     @Test

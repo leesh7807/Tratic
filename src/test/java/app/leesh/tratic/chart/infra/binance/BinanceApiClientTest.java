@@ -1,6 +1,7 @@
 package app.leesh.tratic.chart.infra.binance;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -42,11 +43,13 @@ class BinanceApiClientTest {
 
     @Tag("external")
     @Test
-    void fetch_overPerCallLimit_worksWithLoopPagination() {
+    void fetch_overPerCallLimit_returnsInvalidRequest() {
         ChartSignature sig = new ChartSignature(Market.BINANCE, new Symbol("BTCUSDT"), TimeResolution.M1);
         long requestedCount = (long) props.maxCandlesPerCall() + 10L;
 
         Result<?, ChartFetchFailure> res = fetcher.fetch(new ChartFetchRequest(sig, java.time.Instant.now(), requestedCount));
-        assertTrue(res instanceof Result.Ok);
+        assertTrue(res instanceof Result.Err);
+        ChartFetchFailure error = ((Result.Err<?, ChartFetchFailure>) res).error();
+        assertInstanceOf(ChartFetchFailure.InvalidRequest.class, error);
     }
 }
