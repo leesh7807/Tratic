@@ -41,3 +41,23 @@ Tratic
 
 #### 레이트리밋
 마켓 API 레이트 리밋 또는 연속된 내부 서버 에러 발생 시 요청을 일정시간 잠굴 것
+
+### 프론트엔드 구조
+
+- `frontend/`: React + Vite 프론트엔드
+- `src/main/java`: Spring Boot 백엔드
+- `build/generated/frontend-resources/main/static`: 프론트 빌드 산출물이 합쳐지는 생성 디렉토리
+
+### 로컬 실행
+
+1. `fnm install --lts`
+2. `cd frontend`
+3. `fnm exec --using=.node-version npm ci`
+4. 프론트 개발 서버: `fnm exec --using=.node-version npm run dev`
+5. 백엔드: 프로젝트 루트에서 `./gradlew bootRun`
+
+### 패키징
+
+- 전체 자동 빌드: 프로젝트 루트에서 `./gradlew build`
+- 프론트만 갱신: 프로젝트 루트에서 `./gradlew syncFrontendAssets`
+- React 산출물은 빌드 시 Spring Boot 정적 리소스로 포함된다.

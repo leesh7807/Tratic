@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Sync
+
 plugins {
 	java
 	id("org.springframework.boot") version "3.5.8"
@@ -47,6 +50,87 @@ dependencies {
 	testImplementation("org.mockito:mockito-core")
 	mockitoAgent("org.mockito:mockito-core") {
 		isTransitive = false
+	}
+}
+
+val frontendDir = layout.projectDirectory.dir("frontend")
+val nodeVersionFile = frontendDir.file(".node-version")
+val frontendNodeModulesDir = frontendDir.dir("node_modules")
+val isWindows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
+val npmExecutable = if (isWindows) "npm.cmd" else "npm"
+val fnmExecutable = if (isWindows) "fnm.exe" else "fnm"
+
+val installFrontend by tasks.registering(Exec::class) {
+	group = "frontend"
+	description = "Installs frontend dependencies with fnm-managed Node.js."
+	workingDir(frontendDir.asFile)
+
+	inputs.files(
+		frontendDir.file("package.json"),
+		frontendDir.file("package-lock.json"),
+		nodeVersionFile
+	)
+	outputs.dir(frontendNodeModulesDir)
+
+	commandLine(
+		fnmExecutable,
+		"exec",
+		"--using=${nodeVersionFile.asFile.absolutePath}",
+		npmExecutable,
+		"ci"
+	)
+}
+
+val frontendDistDir = frontendDir.dir("dist")
+
+val buildFrontend by tasks.registering(Exec::class) {
+	group = "frontend"
+	description = "Builds the React frontend."
+	dependsOn(installFrontend)
+	workingDir(frontendDir.asFile)
+
+	inputs.files(
+		frontendDir.file("package.json"),
+		frontendDir.file("package-lock.json"),
+		nodeVersionFile,
+		frontendDir.file("index.html"),
+		frontendDir.file("vite.config.js")
+	)
+	inputs.dir(frontendDir.dir("src"))
+	outputs.dir(frontendDistDir)
+
+	commandLine(
+		fnmExecutable,
+		"exec",
+		"--using=${nodeVersionFile.asFile.absolutePath}",
+		npmExecutable,
+		"run",
+		"build"
+	)
+}
+
+val frontendGeneratedResourcesDir = layout.buildDirectory.dir("generated/frontend-resources/main")
+val frontendStaticOutputDir = layout.buildDirectory.dir("generated/frontend-resources/main/static")
+
+val syncFrontendAssets by tasks.registering(Sync::class) {
+	group = "frontend"
+	description = "Copies the frontend build output into generated Spring static resources."
+	dependsOn(buildFrontend)
+	from(frontendDistDir)
+	into(frontendStaticOutputDir)
+}
+
+sourceSets.main {
+	resources.srcDir(frontendGeneratedResourcesDir)
+}
+
+tasks.named("processResources") {
+	dependsOn(syncFrontendAssets)
+}
+
+tasks.named("clean") {
+	doLast {
+		delete(frontendDistDir)
 	}
 }
 

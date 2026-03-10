@@ -30,7 +30,7 @@ public class SecurityConfig {
                                                 .requestMatchers(
                                                                 "/",
                                                                 "/index.html",
-                                                                "/static/**",
+                                                                "/assets/**",
                                                                 "/favicon.ico",
                                                                 "/error**",
                                                                 "/api/analyze/**")
