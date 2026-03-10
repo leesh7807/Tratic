@@ -12,6 +12,10 @@
 - 구현/수정 전에는 현재 도메인 내부만 보지 말고 `src/main/java/app/leesh/tratic/shared/**`와 해당 도메인의 `infra/shared/**`를 함께 확인한다.
 - 별도 도메인 결정이 없더라도 공통 HTTP 클라이언트, 시간/슬립, 보안, 설정 프로퍼티 바인딩은 `shared/config`와 각 도메인 `infra/shared`를 기준으로 재사용/확장 여부를 먼저 판단한다.
 
+## 코드 작성 규약
+- 코드 내부에서 타입을 `app.leesh...`처럼 fully qualified name으로 직접 체이닝하지 말고 import로 선언해 사용한다. 충돌 회피가 꼭 필요한 예외 상황에서만 제한적으로 FQCN을 사용한다.
+- git 커밋 메시지는 `type(scope): summary` 형태의 컨벤션을 따른다. scope가 불명확하면 생략 가능하지만, 가능한 한 변경 도메인을 드러낸다.
+
 ## 차트 수집 도메인 결정
 - 차트 수집 엔트리는 `ChartService.collectChart(...)`이며 결과는 `Result<Chart, ChartFetchFailure>`를 사용한다.
 - Fetcher 선택은 `Market -> ChartFetcher` 단일 매핑을 강제한다(중복/미지원은 예외 처리).
