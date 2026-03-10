@@ -53,7 +53,7 @@ dependencies {
 	}
 }
 
-val frontendDir = layout.projectDirectory.dir("frontend")
+val frontendDir = layout.projectDirectory.dir("../frontend")
 val nodeVersionFile = frontendDir.file(".node-version")
 val frontendNodeModulesDir = frontendDir.dir("node_modules")
 val isWindows = System.getProperty("os.name").startsWith("Windows", ignoreCase = true)
