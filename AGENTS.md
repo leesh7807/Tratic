@@ -67,6 +67,7 @@
 - 분석 실패는 `InvalidInput`, `InsufficientCandles`, `ChartDataUnavailable` 3분류를 기준으로 API 에러로 매핑한다.
 - 백엔드 Gradle 빌드는 프론트 빌드를 포함한다. `processResources` 전에 프론트 산출물을 생성하고 Spring 정적 리소스 디렉토리로 sync하는 흐름을 전제로 유지한다.
 - 프론트 변경 시에도 배포/패키징 경로는 별도 프론트 서버가 아니라 백엔드가 포함한 정적 리소스 서빙과 SPA forward 규칙을 기준으로 깨지지 않게 유지한다.
+- 프론트용 API 스펙 JSON은 `cd backend && ./gradlew generateOpenApiSpec` 전용 태스크로 생성한다. 산출물은 저장소 루트 `openapi.json`이며 Git 추적 대상에 포함하지 않는다.
 
 ## 향후 확장 결정
 - 외부 LLM 기반 해석은 교체 가능한 어댑터 경계 뒤에 둔다.
