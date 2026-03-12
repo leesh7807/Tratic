@@ -26,6 +26,7 @@ val mockitoAgent = configurations.create("mockitoAgent")
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.8.6")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
@@ -111,6 +112,7 @@ val buildFrontend by tasks.registering(Exec::class) {
 
 val frontendGeneratedResourcesDir = layout.buildDirectory.dir("generated/frontend-resources/main")
 val frontendStaticOutputDir = layout.buildDirectory.dir("generated/frontend-resources/main/static")
+val openApiOutputFile = layout.projectDirectory.file("../openapi.json")
 
 val syncFrontendAssets by tasks.registering(Sync::class) {
 	group = "frontend"
@@ -118,6 +120,22 @@ val syncFrontendAssets by tasks.registering(Sync::class) {
 	dependsOn(buildFrontend)
 	from(frontendDistDir)
 	into(frontendStaticOutputDir)
+}
+
+val generateOpenApiSpec by tasks.registering(Test::class) {
+	group = "documentation"
+	description = "Generates a static OpenAPI JSON document for frontend consumption."
+
+	testClassesDirs = sourceSets.test.get().output.classesDirs
+	classpath = sourceSets.test.get().runtimeClasspath
+
+	useJUnitPlatform {
+		includeTags("openapi")
+	}
+
+	outputs.file(openApiOutputFile)
+	systemProperty("openapi.output-file", openApiOutputFile.asFile.absolutePath)
+	jvmArgs("-javaagent:${configurations["mockitoAgent"].asPath}")
 }
 
 sourceSets.main {
@@ -131,6 +149,7 @@ tasks.named("processResources") {
 tasks.named("clean") {
 	doLast {
 		delete(frontendDistDir)
+		delete(openApiOutputFile.asFile)
 	}
 }
 
@@ -138,6 +157,9 @@ tasks.withType<Test> {
 	useJUnitPlatform() {
 		if (!project.hasProperty("includeExternal")) {
 			excludeTags("external")
+		}
+		if (name != "generateOpenApiSpec") {
+			excludeTags("openapi")
 		}
 	}
 

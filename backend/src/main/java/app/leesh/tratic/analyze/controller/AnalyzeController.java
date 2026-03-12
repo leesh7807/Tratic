@@ -21,6 +21,12 @@ import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 @RestController
 @RequestMapping("/api/analyze")
@@ -33,7 +39,19 @@ public class AnalyzeController {
     }
 
     @PostMapping
-    public ResponseEntity<?> analyze(@Valid @RequestBody AnalyzeRequestDto request, Authentication authentication) {
+    @Operation(summary = "Analyze a trade setup from chart data")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Analysis completed",
+                    content = @Content(schema = @Schema(implementation = AnalyzeResponseDto.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid analyze input or chart request"),
+            @ApiResponse(responseCode = "404", description = "Chart not found"),
+            @ApiResponse(responseCode = "422", description = "Not enough candles to analyze"),
+            @ApiResponse(responseCode = "502", description = "Chart provider unauthorized"),
+            @ApiResponse(responseCode = "503", description = "Chart provider temporary failure or rate limit")
+    })
+    public ResponseEntity<?> analyze(
+            @Valid @RequestBody AnalyzeRequestDto request,
+            @Parameter(hidden = true) Authentication authentication) {
         AnalyzeRequest analyzeRequest = new AnalyzeRequest(
                 request.market(),
                 request.symbol(),
