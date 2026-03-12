@@ -65,6 +65,8 @@
 - 분석 엔진 파라미터는 설정값으로 주입하며, 해상도별 override를 허용한다.
 - `analyze.fetch-candle-count`는 엔진 최소 필요 캔들 수 이상이어야 하며, 부팅 시 검증한다.
 - 분석 실패는 `InvalidInput`, `InsufficientCandles`, `ChartDataUnavailable` 3분류를 기준으로 API 에러로 매핑한다.
+- 백엔드 Gradle 빌드는 프론트 빌드를 포함한다. `processResources` 전에 프론트 산출물을 생성하고 Spring 정적 리소스 디렉토리로 sync하는 흐름을 전제로 유지한다.
+- 프론트 변경 시에도 배포/패키징 경로는 별도 프론트 서버가 아니라 백엔드가 포함한 정적 리소스 서빙과 SPA forward 규칙을 기준으로 깨지지 않게 유지한다.
 
 ## 향후 확장 결정
 - 외부 LLM 기반 해석은 교체 가능한 어댑터 경계 뒤에 둔다.
