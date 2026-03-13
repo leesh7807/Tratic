@@ -1,4 +1,4 @@
-package app.leesh.tratic.analyze.infra.entity;
+package app.leesh.tratic.analyze.infra.persistence;
 
 import java.math.BigDecimal;
 import java.time.Instant;

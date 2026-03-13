@@ -1,4 +1,4 @@
-package app.leesh.tratic.analyze.infra.adapter;
+package app.leesh.tratic.analyze.infra.persistence;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -7,8 +7,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
-import app.leesh.tratic.analyze.infra.dao.AnalysisResultJpaRepository;
-import app.leesh.tratic.analyze.infra.entity.AnalysisResultEntity;
 import app.leesh.tratic.analyze.service.AnalysisResultRepository;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 

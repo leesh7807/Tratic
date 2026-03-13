@@ -1,4 +1,4 @@
-package app.leesh.tratic.analyze.infra.shared;
+package app.leesh.tratic.analyze.infra.config;
 
 import java.util.Map;
 import java.util.Objects;
