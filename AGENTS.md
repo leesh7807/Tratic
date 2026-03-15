@@ -14,6 +14,7 @@
 
 ## 코드 작성 규약
 - 코드 내부에서 타입을 `app.leesh...`처럼 fully qualified name으로 직접 체이닝하지 말고 import로 선언해 사용한다. 충돌 회피가 꼭 필요한 예외 상황에서만 제한적으로 FQCN을 사용한다.
+- 코드 작성을 마친 뒤에는 변경한 객체들 기준으로 불필요한 import를 제거한다.
 - git 커밋 메시지는 `type(scope): summary` 형태의 컨벤션을 따른다. scope가 불명확하면 생략 가능하지만, 가능한 한 변경 도메인을 드러낸다.
 
 ## 차트 수집 도메인 결정
@@ -34,6 +35,15 @@
 
 ## 분석 도메인 결정
 - 분석 파이프라인은 고정: `캔들 수집 -> 전처리(현재 버킷 제외) -> 분석 엔진`.
+- `analyze`는 내부 도메인 책임으로 다룬다. analyze는 차트를 설명 가능한 수학적 상태로 규정하는 과정이며, 삭제/추가 변경보다 기존 규칙을 옵션과 임계값으로 보수적으로 조정하는 영역으로 취급한다.
+- analyze 이후 해석은 `AnalyzeResult`를 입력으로 받아 안정된 scenario/meta snapshot을 산출하는 별도 단계로 다룬다.
+- `AnalyzeScenario` 같은 안정 식별자와 해석 결과 snapshot 계약은 도메인 타입으로 유지한다.
+- 매트릭스 기반 해석 정책과 그 정책을 사용해 scenario를 선택하는 해석기는 현재 구현체이며 인프라 책임으로 둔다. matrix는 유일한 해석 방식으로 고정하지 않는다.
+- `interpret`는 scenario/meta snapshot을 사용자/도구별 표현으로 렌더링하는 외부 인프라 책임으로 둔다. 어떤 문장/포맷/툴 출력으로 변환할지는 교체 가능한 어댑터 경계 뒤에 둔다.
+- analyze 이후 내부 해석 정책은 시나리오 매트릭스로 동작하며, 현재 정책은 조합 coverage 전수 검증 대신 마지막 fallback 시나리오로 항상 결과를 반환하는 쪽을 기본으로 한다.
+- 시나리오는 문자열 상수 대신 안정적인 enum 식별자로 관리하고, 저장/통계/사후평가 기준값으로 사용한다.
+- 해석 결과 snapshot은 분석 결과 저장 레코드에 함께 보존할 수 있다. 단, 사용자 문장(summary)처럼 변경 가능한 표현값은 저장 기준값으로 취급하지 않는다.
+- 로그인 사용자 저장 레코드에는 최소한 `resolution`, `scenario`, `policyVersion`을 포함해 당시 해석 기준을 재현 가능하게 남긴다.
 - 룩어헤드 방지: `entryAt` 버킷 캔들은 지표 계산에서 제외한다.
 - 사용자 입력은 `market, symbol, resolution, entryAt, entryPrice, stopLossPrice, takeProfitPrice, positionPct`를 기준으로 한다.
 - 방향(`LONG/SHORT`)은 가격관계로 추론한다.
@@ -70,5 +80,6 @@
 - 프론트용 API 스펙 JSON은 `cd backend && ./gradlew generateOpenApiSpec` 전용 태스크로 생성한다. 산출물은 저장소 루트 `openapi.json`이며 Git 추적 대상에 포함하지 않는다.
 
 ## 향후 확장 결정
-- 외부 LLM 기반 해석은 교체 가능한 어댑터 경계 뒤에 둔다.
+- 외부 LLM 기반 `interpret`는 교체 가능한 어댑터 경계 뒤에 둔다.
+- 도메인 `analyze` 결과와 사용자 대상 렌더링 결과를 동일 객체로 섞지 않는다. analyze snapshot과 scenario snapshot은 도메인에서 안정적으로 유지하고, matrix/rule/LLM 등 어떤 방식으로 scenario를 선택할지는 교체 가능한 해석 어댑터 경계 뒤에 둔다.
 - 로컬 LLM/룰 엔진으로의 대체 가능성을 유지하기 위해, 분석 엔진 입력/출력 계약은 도메인 타입 중심으로 고정한다.
