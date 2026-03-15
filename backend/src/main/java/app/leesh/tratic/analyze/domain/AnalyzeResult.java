@@ -4,7 +4,6 @@ public record AnalyzeResult(
         AnalyzeDirection direction,
         double trendScore,
         double volatilityScore,
-        VolatilityLabel volatilityLabel,
         double locationScore,
         double pressureScore,
         double pressureRaw,

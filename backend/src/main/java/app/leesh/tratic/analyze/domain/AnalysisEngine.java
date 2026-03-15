@@ -21,15 +21,14 @@ public final class AnalysisEngine {
         }
 
         double trendScore = calculateTrendScore(candles, params);
-        VolatilityMetrics volatility = calculateVolatility(candles, params);
+        double volatility = calculateVolatility(candles, params);
         double locationScore = calculateLocationScore(candles, params);
         PressureMetrics pressure = calculatePressure(candles, params);
 
         return new AnalyzeResult(
                 direction,
                 trendScore,
-                volatility.volatilityScore(),
-                volatility.volatilityLabel(),
+                volatility,
                 locationScore,
                 pressure.pressureScore(),
                 pressure.pressureRaw(),
@@ -57,7 +56,7 @@ public final class AnalysisEngine {
         return 100.0 * clamp(trend, -1.0, 1.0);
     }
 
-    private static VolatilityMetrics calculateVolatility(List<Candle> candles, AnalysisEngineParams params) {
+    private static double calculateVolatility(List<Candle> candles, AnalysisEngineParams params) {
         List<Double> ratios = atrToSmaRatios(candles, params.volatilityAtrPeriod(), params.epsilon());
         List<Double> ratioTail = tail(ratios, params.volatilityZWindow());
         double latest = ratioTail.get(ratioTail.size() - 1);
@@ -65,25 +64,7 @@ public final class AnalysisEngine {
         double std = standardDeviation(ratioTail, mean);
         double z = (latest - mean) / (std + params.epsilon());
         double volatilityScore = 100.0 * clamp(z / params.volatilityZScoreScale(), 0.0, 1.0);
-
-        if (candles.size() < params.atrLongPeriod() + 1) {
-            return new VolatilityMetrics(volatilityScore, VolatilityLabel.UNKNOWN);
-        }
-
-        double shortVol = atr(candles, params.atrShortPeriod());
-        double longVol = atr(candles, params.atrLongPeriod());
-        double ratio = shortVol / (longVol + params.epsilon());
-
-        VolatilityLabel label;
-        if (ratio > params.volatilityHighThreshold()) {
-            label = VolatilityLabel.HIGH;
-        } else if (ratio < params.volatilityLowThreshold()) {
-            label = VolatilityLabel.LOW;
-        } else {
-            label = VolatilityLabel.MID;
-        }
-
-        return new VolatilityMetrics(volatilityScore, label);
+        return volatilityScore;
     }
 
     private static double calculateLocationScore(List<Candle> candles, AnalysisEngineParams params) {
@@ -233,10 +214,6 @@ public final class AnalysisEngine {
         int start = Math.max(0, source.size() - n);
         return source.subList(start, source.size());
     }
-
-    private record VolatilityMetrics(double volatilityScore, VolatilityLabel volatilityLabel) {
-    }
-
     private record PressureMetrics(double pressureScore, double pressureRaw, double pressureView) {
     }
 }
