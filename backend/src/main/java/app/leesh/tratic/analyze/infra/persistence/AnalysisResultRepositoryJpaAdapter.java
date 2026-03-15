@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
+import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
 import app.leesh.tratic.analyze.service.AnalysisResultRepository;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 
@@ -21,13 +22,14 @@ public class AnalysisResultRepositoryJpaAdapter implements AnalysisResultReposit
     }
 
     @Override
-    public void save(UUID userId, AnalyzeRequest request, AnalyzeResult result) {
+    public void save(UUID userId, AnalyzeRequest request, AnalyzeResult result, AnalyzeInterpretation interpretation) {
         Instant now = clock.instant();
 
         repository.save(new AnalysisResultEntity(
                 userId,
                 request.market(),
                 request.symbol(),
+                request.resolution(),
                 request.entryAt(),
                 request.entryPrice(),
                 request.stopLossPrice(),
@@ -36,11 +38,12 @@ public class AnalysisResultRepositoryJpaAdapter implements AnalysisResultReposit
                 result.direction(),
                 result.trendScore(),
                 result.volatilityScore(),
-                result.volatilityLabel(),
                 result.locationScore(),
                 result.pressureScore(),
                 result.pressureRaw(),
                 result.pressureView(),
+                interpretation.scenario(),
+                interpretation.policyVersion(),
                 now));
     }
 }

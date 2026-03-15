@@ -15,7 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import app.leesh.tratic.analyze.domain.AnalyzeResult;
+import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
+import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
@@ -33,9 +34,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @Validated
 public class AnalyzeController {
     private final AnalyzeService analyzeService;
+    private final AnalyzeInterpretationRenderer interpretationRenderer;
 
-    public AnalyzeController(AnalyzeService analyzeService) {
+    public AnalyzeController(AnalyzeService analyzeService, AnalyzeInterpretationRenderer interpretationRenderer) {
         this.analyzeService = analyzeService;
+        this.interpretationRenderer = interpretationRenderer;
     }
 
     @PostMapping
@@ -71,16 +74,14 @@ public class AnalyzeController {
                         this::toErrorResponse);
     }
 
-    private AnalyzeResponseDto toResponseDto(AnalyzeResult value) {
+    private AnalyzeResponseDto toResponseDto(AnalyzeInterpretation value) {
         return new AnalyzeResponseDto(
                 value.direction(),
-                value.trendScore(),
-                value.volatilityScore(),
-                value.volatilityLabel(),
-                value.locationScore(),
-                value.pressureScore(),
-                value.pressureRaw(),
-                value.pressureView());
+                value.scenario(),
+                interpretationRenderer.render(value),
+                value.bias(),
+                value.confidence(),
+                value.riskLevel());
     }
 
     private ApiError toApiError(AnalyzeFailure failure) {
