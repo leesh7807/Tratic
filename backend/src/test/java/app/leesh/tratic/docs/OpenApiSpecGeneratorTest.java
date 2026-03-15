@@ -24,6 +24,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.MockMvc;
 
 import app.leesh.tratic.analyze.controller.AnalyzeController;
+import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 
 @Tag("openapi")
@@ -68,6 +69,11 @@ public class OpenApiSpecGeneratorTest {
         @Bean
         AnalyzeService analyzeService() {
             return mock(AnalyzeService.class);
+        }
+
+        @Bean
+        AnalyzeInterpretationRenderer analyzeInterpretationRenderer() {
+            return mock(AnalyzeInterpretationRenderer.class);
         }
 
         @Bean
