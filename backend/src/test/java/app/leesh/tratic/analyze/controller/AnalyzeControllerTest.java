@@ -66,7 +66,6 @@ public class AnalyzeControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         AnalyzeResponseDto body = assertResponseBody(response);
-        assertEquals(AnalyzeDirection.LONG, body.direction());
         assertEquals(AnalyzeScenario.BULLISH_TREND_CONTINUATION, body.scenario());
         assertEquals("요약", body.summary());
         verify(analyzeService).analyze(any(AnalyzeRequest.class), eq(null));

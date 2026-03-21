@@ -75,7 +75,6 @@ public class AnalyzeController {
 
     private AnalyzeResponseDto toResponseDto(AnalyzeInterpretation value) {
         return new AnalyzeResponseDto(
-                value.direction(),
                 value.scenario(),
                 interpretationRenderer.render(value));
     }
