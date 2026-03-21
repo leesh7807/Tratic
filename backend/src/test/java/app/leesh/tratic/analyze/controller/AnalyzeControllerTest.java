@@ -121,7 +121,6 @@ public class AnalyzeControllerTest {
                 Instant.parse("2026-01-10T10:00:00Z"),
                 new BigDecimal("100"),
                 new BigDecimal("90"),
-                new BigDecimal("110"),
                 new BigDecimal("25.5"));
     }
 

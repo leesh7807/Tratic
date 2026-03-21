@@ -24,8 +24,6 @@ public record AnalyzeRequestDto(
         @NotNull @DecimalMin("0.0") BigDecimal entryPrice,
         @Schema(description = "Stop loss price", example = "90.0")
         @NotNull @DecimalMin("0.0") BigDecimal stopLossPrice,
-        @Schema(description = "Take profit price", example = "110.0")
-        @NotNull @DecimalMin("0.0") BigDecimal takeProfitPrice,
         @Schema(description = "Position size percentage", example = "25.5")
         @DecimalMin("0.0") @DecimalMax("100.0") BigDecimal positionPct) {
 }

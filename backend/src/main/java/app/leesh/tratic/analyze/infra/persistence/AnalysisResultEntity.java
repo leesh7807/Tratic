@@ -51,9 +51,6 @@ public class AnalysisResultEntity {
     @Column(name = "stop_loss_price", nullable = false, precision = 30, scale = 10)
     private BigDecimal stopLossPrice;
 
-    @Column(name = "take_profit_price", nullable = false, precision = 30, scale = 10)
-    private BigDecimal takeProfitPrice;
-
     @Column(name = "position_pct", precision = 8, scale = 4)
     private BigDecimal positionPct;
 
@@ -94,7 +91,7 @@ public class AnalysisResultEntity {
 
     public AnalysisResultEntity(UUID userId, Market market, String symbol, TimeResolution resolution, Instant entryAt,
             BigDecimal entryPrice,
-            BigDecimal stopLossPrice, BigDecimal takeProfitPrice, BigDecimal positionPct, AnalyzeDirection direction,
+            BigDecimal stopLossPrice, BigDecimal positionPct, AnalyzeDirection direction,
             double trendScore, double volatilityScore, double locationScore,
             double pressureScore, double pressureRaw, double pressureView, AnalyzeScenario scenario,
             String policyVersion, Instant createdAt) {
@@ -105,7 +102,6 @@ public class AnalysisResultEntity {
         this.entryAt = entryAt;
         this.entryPrice = entryPrice;
         this.stopLossPrice = stopLossPrice;
-        this.takeProfitPrice = takeProfitPrice;
         this.positionPct = positionPct;
         this.direction = direction;
         this.trendScore = trendScore;

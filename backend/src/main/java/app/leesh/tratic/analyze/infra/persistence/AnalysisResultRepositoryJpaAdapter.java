@@ -33,7 +33,6 @@ public class AnalysisResultRepositoryJpaAdapter implements AnalysisResultReposit
                 request.entryAt(),
                 request.entryPrice(),
                 request.stopLossPrice(),
-                request.takeProfitPrice(),
                 request.positionPct(),
                 result.direction(),
                 result.trendScore(),

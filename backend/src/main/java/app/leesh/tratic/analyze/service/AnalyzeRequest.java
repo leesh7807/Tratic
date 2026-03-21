@@ -14,7 +14,6 @@ public record AnalyzeRequest(
         Instant entryAt,
         BigDecimal entryPrice,
         BigDecimal stopLossPrice,
-        BigDecimal takeProfitPrice,
         BigDecimal positionPct) {
 
     public AnalyzeRequest {
@@ -24,6 +23,5 @@ public record AnalyzeRequest(
         Objects.requireNonNull(entryAt, "entryAt must not be null");
         Objects.requireNonNull(entryPrice, "entryPrice must not be null");
         Objects.requireNonNull(stopLossPrice, "stopLossPrice must not be null");
-        Objects.requireNonNull(takeProfitPrice, "takeProfitPrice must not be null");
     }
 }
