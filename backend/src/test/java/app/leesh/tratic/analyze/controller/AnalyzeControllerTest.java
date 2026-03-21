@@ -2,6 +2,7 @@ package app.leesh.tratic.analyze.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -64,6 +65,10 @@ public class AnalyzeControllerTest {
         ResponseEntity<?> response = analyzeController.analyze(request, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        AnalyzeResponseDto body = assertResponseBody(response);
+        assertEquals(AnalyzeDirection.LONG, body.direction());
+        assertEquals(AnalyzeScenario.BULLISH_TREND_CONTINUATION, body.scenario());
+        assertEquals("요약", body.summary());
         verify(analyzeService).analyze(any(AnalyzeRequest.class), eq(null));
     }
 
@@ -81,6 +86,8 @@ public class AnalyzeControllerTest {
         ResponseEntity<?> response = analyzeController.analyze(request, authentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        AnalyzeResponseDto body = assertResponseBody(response);
+        assertEquals("요약", body.summary());
         ArgumentCaptor<AnalyzeRequest> captor = ArgumentCaptor.forClass(AnalyzeRequest.class);
         verify(analyzeService).analyze(captor.capture(), eq(userId));
         assertEquals(TimeResolution.M15, captor.getValue().resolution());
@@ -132,5 +139,11 @@ public class AnalyzeControllerTest {
                 "HIGH",
                 "MEDIUM",
                 "matrix-v1");
+    }
+
+    private AnalyzeResponseDto assertResponseBody(ResponseEntity<?> response) {
+        Object body = response.getBody();
+        assertNotNull(body);
+        return assertInstanceOf(AnalyzeResponseDto.class, body);
     }
 }

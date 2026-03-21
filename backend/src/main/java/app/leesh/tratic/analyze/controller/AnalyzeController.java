@@ -77,10 +77,7 @@ public class AnalyzeController {
         return new AnalyzeResponseDto(
                 value.direction(),
                 value.scenario(),
-                interpretationRenderer.render(value),
-                value.bias(),
-                value.confidence(),
-                value.riskLevel());
+                interpretationRenderer.render(value));
     }
 
     private ApiError toApiError(AnalyzeFailure failure) {
