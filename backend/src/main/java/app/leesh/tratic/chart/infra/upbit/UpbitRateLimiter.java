@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Component;
 
-import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.shared.market.Market;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;

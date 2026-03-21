@@ -1,7 +1,7 @@
 package app.leesh.tratic.chart.service;
 
 import app.leesh.tratic.chart.domain.Chart;
-import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.shared.market.Market;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
 

@@ -3,7 +3,7 @@ package app.leesh.tratic.analyze.controller;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.shared.market.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;

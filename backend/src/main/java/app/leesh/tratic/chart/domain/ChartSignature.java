@@ -2,6 +2,8 @@ package app.leesh.tratic.chart.domain;
 
 import java.util.Objects;
 
+import app.leesh.tratic.shared.market.Market;
+
 public record ChartSignature(
         Market market,
         MarketSymbol symbol,

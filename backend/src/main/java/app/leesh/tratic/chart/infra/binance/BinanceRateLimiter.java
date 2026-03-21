@@ -6,7 +6,7 @@ import java.time.Instant;
 
 import org.springframework.stereotype.Component;
 
-import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.shared.market.Market;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;

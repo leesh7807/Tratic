@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
-import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.shared.market.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

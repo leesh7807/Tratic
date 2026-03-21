@@ -2,7 +2,7 @@ package app.leesh.tratic.chart.service.error;
 
 import java.time.Duration;
 
-import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.shared.market.Market;
 
 public sealed interface ChartFetchFailure permits
         ChartFetchFailure.Temporary,

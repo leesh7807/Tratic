@@ -32,7 +32,7 @@ import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
-import app.leesh.tratic.chart.domain.Market;
+import app.leesh.tratic.shared.market.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.shared.Result;
 

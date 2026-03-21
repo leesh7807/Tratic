@@ -19,8 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
-import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.MarketSymbol;
+import app.leesh.tratic.shared.market.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.ChartFetchRequest;

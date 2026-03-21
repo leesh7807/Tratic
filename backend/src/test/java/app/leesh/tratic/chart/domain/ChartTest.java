@@ -12,6 +12,8 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
+import app.leesh.tratic.shared.market.Market;
+
 public class ChartTest {
     Market market = Market.UPBIT;
     MarketSymbol symbol = new MarketSymbol("BTC");

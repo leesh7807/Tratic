@@ -1,4 +1,4 @@
-package app.leesh.tratic.chart.domain;
+package app.leesh.tratic.shared.market;
 
 public enum Market {
     US_STOCK,
