@@ -92,21 +92,38 @@ public class AnalyzeServiceTest {
     }
 
     @Test
-    @DisplayName("방향을 추론할 수 없으면 InvalidInput을 반환한다")
-    public void analyze_returns_invalid_input_when_direction_cannot_be_inferred() {
-        AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "98", "99", null);
+    @DisplayName("손절가가 진입가보다 낮으면 LONG으로 분석한다")
+    public void analyze_infers_long_when_stop_loss_is_below_entry() {
+        AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "98", "101", null);
+
+        when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
+        when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
+        when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.UPBIT, "KRW-BTC")));
+        when(analyzeInterpreter.interpret(any())).thenReturn(sampleInterpretation());
 
         Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
-        assertInstanceOf(Result.Err.class, result);
-        AnalyzeFailure failure = ((Result.Err<AnalyzeInterpretation, AnalyzeFailure>) result).error();
-        assertInstanceOf(AnalyzeFailure.InvalidInput.class, failure);
-        verify(chartService, never()).collectChart(any());
+        assertInstanceOf(Result.Ok.class, result);
     }
 
     @Test
-    @DisplayName("손절가나 익절가가 진입가와 같으면 InvalidInput을 반환한다")
-    public void analyze_returns_invalid_input_when_price_equals_entry() {
+    @DisplayName("손절가가 진입가보다 높으면 SHORT로 분석한다")
+    public void analyze_infers_short_when_stop_loss_is_above_entry() {
+        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "102", "110", null);
+
+        when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
+        when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
+        when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.BINANCE, "BTCUSDT")));
+        when(analyzeInterpreter.interpret(any())).thenReturn(shortInterpretation());
+
+        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
+
+        assertInstanceOf(Result.Ok.class, result);
+    }
+
+    @Test
+    @DisplayName("손절가가 진입가와 같으면 InvalidInput을 반환한다")
+    public void analyze_returns_invalid_input_when_stop_loss_equals_entry() {
         AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "100", "110", null);
 
         Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
@@ -152,6 +169,16 @@ public class AnalyzeServiceTest {
         return new AnalyzeInterpretation(
                 AnalyzeDirection.LONG,
                 AnalyzeScenario.BULLISH_TREND_CONTINUATION,
+                "CONTINUATION",
+                "HIGH",
+                "MEDIUM",
+                "matrix-v1");
+    }
+
+    private AnalyzeInterpretation shortInterpretation() {
+        return new AnalyzeInterpretation(
+                AnalyzeDirection.SHORT,
+                AnalyzeScenario.BEARISH_TREND_CONTINUATION,
                 "CONTINUATION",
                 "HIGH",
                 "MEDIUM",

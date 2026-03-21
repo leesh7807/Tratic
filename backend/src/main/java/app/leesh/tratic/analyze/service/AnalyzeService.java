@@ -43,24 +43,23 @@ public class AnalyzeService {
     public Result<AnalyzeInterpretation, AnalyzeFailure> analyze(AnalyzeRequest request, UUID authenticatedUserId) {
         TimeResolution resolution = request.resolution();
         AnalysisEngineParams engineParams = analysisEnginePolicy.resolve(resolution);
-        return resolveDirection(request.entryPrice(), request.stopLossPrice(), request.takeProfitPrice())
+        return resolveDirection(request.entryPrice(), request.stopLossPrice())
                 .flatMap(direction -> collectCandles(request)
                         .flatMap(candles -> analyzeCandles(candles, direction, engineParams))
                         .map(analyzed -> persistAndInterpret(authenticatedUserId, request, analyzed)));
     }
 
-    private Result<AnalyzeDirection, AnalyzeFailure> resolveDirection(BigDecimal entryPrice, BigDecimal stopLossPrice,
-            BigDecimal takeProfitPrice) {
-        if (isLess(stopLossPrice, entryPrice) && isGreater(takeProfitPrice, entryPrice)) {
+    private Result<AnalyzeDirection, AnalyzeFailure> resolveDirection(BigDecimal entryPrice, BigDecimal stopLossPrice) {
+        if (isLess(stopLossPrice, entryPrice)) {
             return Result.ok(AnalyzeDirection.LONG);
         }
 
-        if (isGreater(stopLossPrice, entryPrice) && isLess(takeProfitPrice, entryPrice)) {
+        if (isGreater(stopLossPrice, entryPrice)) {
             return Result.ok(AnalyzeDirection.SHORT);
         }
 
         return Result.err(new AnalyzeFailure.InvalidInput(
-                "cannot determine direction from entry/stopLoss/takeProfit prices"));
+                "cannot determine direction from entry/stopLoss prices"));
     }
 
     private Result<List<Candle>, AnalyzeFailure> collectCandles(AnalyzeRequest request) {
