@@ -20,6 +20,7 @@
 ## 차트 수집 도메인 결정
 - 차트 수집 엔트리는 `ChartService.collectChart(...)`이며 결과는 `Result<Chart, ChartFetchFailure>`를 사용한다.
 - Fetcher 선택은 `Market -> ChartFetcher` 단일 매핑을 강제한다(중복/미지원은 예외 처리).
+- chart는 symbol search 경로를 직접 강제하지 않는다. chart가 요구하는 입력 계약은 검색 여부가 아니라 **거래소에서 바로 호출 가능한 native symbol code**다.
 - 분석/차트 수집 윈도우 크기는 내부 정책으로 `256` 고정한다(외부 요청으로 가변 count를 열지 않음).
 - 롤링 윈도우 확장 가능성은 유지하되, 확장 지점은 내부 정책 객체로 한정한다.
 - Upbit는 요청 전 필요 호출 수를 선검증하며, 임계 초과 시 API 호출 없이 `InvalidRequest`로 실패시킨다.
@@ -32,6 +33,13 @@
 - 배치 실행 중 중간 실패가 발생해도 선점한 limiter 용량은 소진된 것으로 간주한다(롤백 없음).
 - 레이트리미터는 거래소별 요청 단위(Upbit: req/sec, Binance: weight/min)를 검증하며, 인터럽트는 `RateLimited`로 처리한다.
 - fast-fail 기준은 거래소 공통으로 `대기시간 3초 이상이면 실패`로 정렬한다.
+
+## 심볼 카탈로그 도메인 결정
+- symbol search와 symbol catalog는 chart의 하위 책임이 아니라 별도 도메인으로 유지한다. chart와 symbol catalog는 동일 symbol 문자열을 다루더라도 변경 이유가 다르므로 경계를 분리한다.
+- chart/analyze에 들어가는 symbol은 catalog 검색 결과를 통해 들어올 수 있으나, 도메인 계약 자체를 `검색된 값만 허용`으로 고정하지 않는다. 검증 기준은 UI 경로가 아니라 내부 catalog 존재 여부다.
+- 외부 입력 검증은 `market + nativeSymbolCode`가 해당 market catalog에 존재하는지 기준으로 처리한다.
+- Upbit symbol catalog 원본은 `GET https://api.upbit.com/v1/market/all` 기준으로 조회한다.
+- Binance futures symbol catalog 원본은 `GET https://fapi.binance.com/fapi/v1/exchangeInfo` 기준으로 조회한다.
 
 ## 분석 도메인 결정
 - 분석 파이프라인은 고정: `캔들 수집 -> 전처리(현재 버킷 제외) -> 분석 엔진`.
