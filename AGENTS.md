@@ -3,6 +3,7 @@
 ## 문서 목적
 - 이 문서는 코드 탐색만으로 즉시 확인 가능한 정보(디렉토리 구조, 클래스 나열, 테스트 파일 목록)를 반복하지 않는다.
 - 에이전트가 구현/수정 시 반드시 지켜야 할 **도메인 의사결정과 운영 규칙**만 기록한다.
+- 외부 API/저장 포맷도 단순 스펙 나열이 아니라, 왜 그 계약을 유지하는지가 구현만으로 충분히 복원되지 않는 경우에는 이 문서에 남긴다.
 - 구현 변경으로 정책이 바뀌면 본문을 직접 갱신한다. 별도 append-only 섹션은 두지 않는다.
 
 ## 공통 아키텍처 결정
@@ -13,8 +14,7 @@
 - 별도 도메인 결정이 없더라도 공통 HTTP 클라이언트, 시간/슬립, 보안, 설정 프로퍼티 바인딩은 `shared/config`와 각 도메인 `infra/shared`를 기준으로 재사용/확장 여부를 먼저 판단한다.
 
 ## 코드 작성 규약
-- 코드 내부에서 타입을 `app.leesh...`처럼 fully qualified name으로 직접 체이닝하지 말고 import로 선언해 사용한다. 충돌 회피가 꼭 필요한 예외 상황에서만 제한적으로 FQCN을 사용한다.
-- 코드 작성을 마친 뒤에는 변경한 객체들 기준으로 불필요한 import를 제거한다.
+- 코드 작성을 마친 뒤에는 변경한 객체들 기준으로 불필요한 import 제거 및 fqcn을 import로 분리한다.
 - git 커밋 메시지는 `type(scope): summary` 형태의 컨벤션을 따른다. scope가 불명확하면 생략 가능하지만, 가능한 한 변경 도메인을 드러낸다.
 
 ## 차트 수집 도메인 결정
@@ -54,22 +54,26 @@
 - 로그인 사용자 요청은 분석 결과를 저장한다(현재 구현은 DB persist 활성화).
 
 ## 분석 지표 정책
-- 출력 축은 `trend, volatility, location, pressure` 4개를 유지한다.
+- 내부 analyze 출력 축은 `trend, volatility, location, pressure` 4개를 유지한다.
 - 추세 점수:
   - `trend = 0.5 * trend_lr + 0.5 * trend_ma`
   - `trend_lr = LinearRegressionSlope(close tail) / (ATR + epsilon)`
   - `trend_ma = (EMA_fast - EMA_slow) / (ATR + epsilon)`
   - `ATR floor`(ratio/min)로 저변동 구간 과증폭을 완화한다.
-- 변동성 점수/라벨:
+- 변동성 점수:
   - 점수는 `ATR/SMA` 비율의 Z-score 기반 정규화 점수 사용.
-  - 라벨은 `short ATR / long ATR` 임계값으로 `LOW/MID/HIGH` 산출.
-  - `long ATR` 계산 최소 길이 미충족 시 `UNKNOWN`을 반환한다.
 - 위치 점수:
   - 최근 윈도우의 `LowestLow~HighestHigh` 대비 종가 상대 위치를 0~100으로 산출한다.
 - 수급 압력:
   - `raw = w1*posClose + w2*body + w3*wickDiff`
   - 거래량 가중치를 곱한 `pressure_raw`를 계산하고, 표시값 `pressure_view`는 EMA 스무딩을 적용한다.
-  - 응답에는 `pressure_score`, `pressure_raw`, `pressure_view`를 함께 노출한다.
+  - 내부 analyze 결과와 로그인 사용자 저장 레코드에는 `pressure_score`, `pressure_raw`, `pressure_view`를 유지한다.
+
+## 분석 응답 계약 결정
+- `/api/analyze`의 외부 응답은 raw 지표값 나열보다 해석 결과 전달을 우선한다.
+- 현재 응답 계약은 `direction, scenario, summary, bias, confidence, riskLevel`을 기준으로 유지한다.
+- `scenario`는 안정 식별자이며, `summary`는 교체 가능한 렌더러가 생성하는 표현값으로 본다.
+- raw analyze 축 점수(`trend`, `volatility`, `location`, `pressure_*`)는 현재 외부 응답 계약에 직접 노출하지 않는다.
 
 ## 설정/운영 결정
 - 분석 엔진 파라미터는 설정값으로 주입하며, 해상도별 override를 허용한다.
