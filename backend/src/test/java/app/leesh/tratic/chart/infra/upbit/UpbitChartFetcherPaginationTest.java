@@ -27,7 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
-import app.leesh.tratic.chart.domain.Symbol;
+import app.leesh.tratic.chart.domain.MarketSymbol;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.UpbitProps;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
@@ -67,7 +67,7 @@ public class UpbitChartFetcherPaginationTest {
         when(rateLimiter.acquire(anyInt())).thenReturn(Result.ok(null));
         UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
                 upbitProps(pageLimit));
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, firstLatest, firstCount + secondCount + thirdCount);
 
         Result<Chart, ChartFetchFailure> result = fetcher.fetch(req);
@@ -117,7 +117,7 @@ public class UpbitChartFetcherPaginationTest {
         when(rateLimiter.acquire(anyInt())).thenReturn(Result.ok(null));
         UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
                 upbitProps(pageLimit));
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, firstLatest, 450);
 
         Result<Chart, ChartFetchFailure> result = fetcher.fetch(req);
@@ -161,7 +161,7 @@ public class UpbitChartFetcherPaginationTest {
         when(rateLimiter.acquire(anyInt())).thenReturn(Result.ok(null));
         UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
                 upbitProps(pageLimit));
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, firstLatest, 450);
 
         Result<Chart, ChartFetchFailure> result = fetcher.fetch(req);
@@ -212,7 +212,7 @@ public class UpbitChartFetcherPaginationTest {
         when(rateLimiter.acquire(anyInt())).thenReturn(Result.ok(null));
         UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),
                 upbitProps(pageLimit));
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, t2, 7);
 
         Result<Chart, ChartFetchFailure> result = fetcher.fetch(req);
@@ -226,7 +226,7 @@ public class UpbitChartFetcherPaginationTest {
     @DisplayName("요청 캔들 수가 즉시 처리 가능한 호출 수를 넘으면 fail-fast로 종료한다")
     public void fetch_failsFastWhenRequiredCallsExceedPerSecondLimit() {
         int pageLimit = 200;
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 2001);
 
         UpbitChartFetcher fetcher = new UpbitChartFetcher(apiClient, rateLimiter, new UpbitCandleResponseMapper(),

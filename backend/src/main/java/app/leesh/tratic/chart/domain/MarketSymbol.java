@@ -1,5 +1,5 @@
 package app.leesh.tratic.chart.domain;
 
-public record Symbol(
+public record MarketSymbol(
         String value) {
 }

@@ -20,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
-import app.leesh.tratic.chart.domain.Symbol;
+import app.leesh.tratic.chart.domain.MarketSymbol;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
@@ -94,7 +94,7 @@ class BinanceChartFetcherPaginationTest {
     }
 
     private static ChartSignature signature() {
-        return new ChartSignature(Market.BINANCE, new Symbol("BTCUSDT"), TimeResolution.M5);
+        return new ChartSignature(Market.BINANCE, new MarketSymbol("BTCUSDT"), TimeResolution.M5);
     }
 
     private static BinanceCandleResponse candle(Instant ts) {

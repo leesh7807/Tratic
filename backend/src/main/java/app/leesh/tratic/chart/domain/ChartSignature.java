@@ -4,7 +4,7 @@ import java.util.Objects;
 
 public record ChartSignature(
         Market market,
-        Symbol symbol,
+        MarketSymbol symbol,
         TimeResolution timeResolution) {
 
     public ChartSignature {

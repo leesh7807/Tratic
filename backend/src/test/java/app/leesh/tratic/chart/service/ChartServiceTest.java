@@ -16,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
-import app.leesh.tratic.chart.domain.Symbol;
+import app.leesh.tratic.chart.domain.MarketSymbol;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
@@ -35,7 +35,7 @@ public class ChartServiceTest {
 
     @Test
     public void collectChart_returnsOkResultWithChart() {
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
         Chart expectedChart = mock(Chart.class);
 
@@ -51,7 +51,7 @@ public class ChartServiceTest {
 
     @Test
     public void collectChart_returnsErrResultWithTemporaryFailure() {
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
@@ -66,7 +66,7 @@ public class ChartServiceTest {
 
     @Test
     public void collectChart_returnsErrResultWithRateLimitedFailure() {
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
@@ -82,7 +82,7 @@ public class ChartServiceTest {
 
     @Test
     public void collectChart_returnsErrResultWithInvalidRequestFailure() {
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
@@ -97,7 +97,7 @@ public class ChartServiceTest {
 
     @Test
     public void collectChart_returnsErrResultWithUnauthorizedFailure() {
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);
@@ -112,7 +112,7 @@ public class ChartServiceTest {
 
     @Test
     public void collectChart_returnsErrResultWithNotFoundFailure() {
-        ChartSignature sig = new ChartSignature(Market.UPBIT, new Symbol("KRW-BTC"), TimeResolution.M5);
+        ChartSignature sig = new ChartSignature(Market.UPBIT, new MarketSymbol("KRW-BTC"), TimeResolution.M5);
         ChartFetchRequest req = new ChartFetchRequest(sig, Instant.parse("2026-01-01T00:00:00Z"), 1);
 
         when(resolver.resolve(Market.UPBIT)).thenReturn(fetcher);

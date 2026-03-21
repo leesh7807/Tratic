@@ -10,7 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
-import app.leesh.tratic.chart.domain.Symbol;
+import app.leesh.tratic.chart.domain.MarketSymbol;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.infra.shared.ClientPropsConfig.BinanceProps;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
@@ -33,7 +33,7 @@ class BinanceApiClientTest {
     @Test
     void fetchCandlesTo_hitsBinanceApi() {
 
-        ChartSignature sig = new ChartSignature(Market.BINANCE, new Symbol("BTCUSDT"), TimeResolution.M1);
+        ChartSignature sig = new ChartSignature(Market.BINANCE, new MarketSymbol("BTCUSDT"), TimeResolution.M1);
         Result<BinanceCandleResponse[], ChartFetchFailure> res = client.fetchCandlesTo(sig, "BTCUSDT", "1m",
                 1700000000000L, 2);
         assertTrue(res instanceof Result.Ok);
@@ -44,7 +44,7 @@ class BinanceApiClientTest {
     @Tag("external")
     @Test
     void fetch_overPerCallLimit_returnsInvalidRequest() {
-        ChartSignature sig = new ChartSignature(Market.BINANCE, new Symbol("BTCUSDT"), TimeResolution.M1);
+        ChartSignature sig = new ChartSignature(Market.BINANCE, new MarketSymbol("BTCUSDT"), TimeResolution.M1);
         long requestedCount = (long) props.maxCandlesPerCall() + 10L;
 
         Result<?, ChartFetchFailure> res = fetcher.fetch(new ChartFetchRequest(sig, java.time.Instant.now(), requestedCount));

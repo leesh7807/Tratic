@@ -15,7 +15,7 @@ import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.ChartSignature;
-import app.leesh.tratic.chart.domain.Symbol;
+import app.leesh.tratic.chart.domain.MarketSymbol;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
 import app.leesh.tratic.chart.service.ChartService;
@@ -64,7 +64,7 @@ public class AnalyzeService {
 
     private Result<List<Candle>, AnalyzeFailure> collectCandles(AnalyzeRequest request) {
         TimeResolution resolution = request.resolution();
-        ChartSignature signature = new ChartSignature(request.market(), new Symbol(request.symbol()), resolution);
+        ChartSignature signature = new ChartSignature(request.market(), new MarketSymbol(request.symbol()), resolution);
         Instant asOf = request.entryAt().minus(resolution.toDuration());
 
         return chartService.collectChart(new ChartFetchRequest(signature, asOf, analyzePolicy.fetchCandleCount()))

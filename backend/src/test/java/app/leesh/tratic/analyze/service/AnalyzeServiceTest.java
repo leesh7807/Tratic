@@ -29,7 +29,7 @@ import app.leesh.tratic.chart.domain.CandleSeries;
 import app.leesh.tratic.chart.domain.Chart;
 import app.leesh.tratic.chart.domain.ChartSignature;
 import app.leesh.tratic.chart.domain.Market;
-import app.leesh.tratic.chart.domain.Symbol;
+import app.leesh.tratic.chart.domain.MarketSymbol;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.service.ChartService;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
@@ -210,7 +210,7 @@ public class AnalyzeServiceTest {
                     bd(1000 + i * 10)));
         }
 
-        ChartSignature signature = new ChartSignature(market, new Symbol(symbol), TimeResolution.M15);
+        ChartSignature signature = new ChartSignature(market, new MarketSymbol(symbol), TimeResolution.M15);
         return Chart.of(signature, CandleSeries.ofSorted(candles));
     }
 

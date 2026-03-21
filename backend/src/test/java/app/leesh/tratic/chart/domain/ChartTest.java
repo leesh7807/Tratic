@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 public class ChartTest {
     Market market = Market.UPBIT;
-    Symbol symbol = new Symbol("BTC");
+    MarketSymbol symbol = new MarketSymbol("BTC");
     TimeResolution timeResolution = TimeResolution.D1;
     ChartSignature sig = new ChartSignature(market, symbol, timeResolution);
 
