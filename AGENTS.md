@@ -36,7 +36,7 @@
 ## 분석 도메인 결정
 - 분석 파이프라인은 고정: `캔들 수집 -> 전처리(현재 버킷 제외) -> 분석 엔진`.
 - `analyze`는 내부 도메인 책임으로 다룬다. analyze는 차트를 설명 가능한 수학적 상태로 규정하는 과정이며, 삭제/추가 변경보다 기존 규칙을 옵션과 임계값으로 보수적으로 조정하는 영역으로 취급한다.
-- analyze 이후 해석은 `AnalyzeResult`를 입력으로 받아 안정된 scenario/meta snapshot을 산출하는 별도 단계로 다룬다.
+- analyze 이후 해석은 `AnalyzeResult`를 입력으로 받아 안정된 scenario snapshot을 산출하는 별도 단계로 다룬다. 현재 matrix 구현의 `bias`, `confidence`, `riskLevel`은 외부 계약이 아니라 내부 메타로만 취급한다.
 - `AnalyzeScenario` 같은 안정 식별자와 해석 결과 snapshot 계약은 도메인 타입으로 유지한다.
 - 매트릭스 기반 해석 정책과 그 정책을 사용해 scenario를 선택하는 해석기는 현재 구현체이며 인프라 책임으로 둔다. matrix는 유일한 해석 방식으로 고정하지 않는다.
 - `interpret`는 scenario/meta snapshot을 사용자/도구별 표현으로 렌더링하는 외부 인프라 책임으로 둔다. 어떤 문장/포맷/툴 출력으로 변환할지는 교체 가능한 어댑터 경계 뒤에 둔다.
@@ -73,8 +73,9 @@
 
 ## 분석 응답 계약 결정
 - `/api/analyze`의 외부 응답은 raw 지표값 나열보다 해석 결과 전달을 우선한다.
-- 현재 응답 계약은 `direction, scenario, summary, bias, confidence, riskLevel`을 기준으로 유지한다.
+- 현재 응답 계약은 `direction, scenario, summary`를 기준으로 유지한다.
 - `scenario`는 안정 식별자이며, `summary`는 교체 가능한 렌더러가 생성하는 표현값으로 본다.
+- matrix 해석기의 `bias`, `confidence`, `riskLevel`은 현재 외부 응답 계약에 노출하지 않는다. 이 값들은 matrix rule 내부 메타로만 유지한다.
 - raw analyze 축 점수(`trend`, `volatility`, `location`, `pressure_*`)는 현재 외부 응답 계약에 직접 노출하지 않는다.
 - 익절가를 입력으로 받지 않는 대신, 필요하면 결과/후속 UX에서 목표 구간이나 청산 시나리오를 제안하는 방향으로 확장한다.
 
