@@ -66,7 +66,6 @@ public class BinanceChartFetcher implements ChartFetcher {
     private static String parseTimeResolution(TimeResolution timeResolution) {
         return switch (timeResolution) {
             case M1 -> "1m";
-            case M3 -> "3m";
             case M5 -> "5m";
             case M15 -> "15m";
             case M30 -> "30m";

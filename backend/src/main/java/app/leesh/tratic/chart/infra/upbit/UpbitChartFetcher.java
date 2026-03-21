@@ -114,7 +114,6 @@ public class UpbitChartFetcher implements ChartFetcher {
     private static long parseMinuteUnit(TimeResolution timeResolution) {
         return switch (timeResolution) {
             case M1 -> 1;
-            case M3 -> 3;
             case M5 -> 5;
             case M15 -> 15;
             case M30 -> 30;

@@ -4,7 +4,6 @@ import java.time.Duration;
 
 public enum TimeResolution {
     M1(Duration.ofMinutes(1)),
-    M3(Duration.ofMinutes(3)),
     M5(Duration.ofMinutes(5)),
     M15(Duration.ofMinutes(15)),
     M30(Duration.ofMinutes(30)),
