@@ -48,12 +48,6 @@ public class AnalysisResultEntity {
     @Column(name = "entry_price", nullable = false, precision = 30, scale = 10)
     private BigDecimal entryPrice;
 
-    @Column(name = "stop_loss_price", nullable = false, precision = 30, scale = 10)
-    private BigDecimal stopLossPrice;
-
-    @Column(name = "position_pct", precision = 8, scale = 4)
-    private BigDecimal positionPct;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "direction", nullable = false, length = 10)
     private AnalyzeDirection direction;
@@ -91,7 +85,7 @@ public class AnalysisResultEntity {
 
     public AnalysisResultEntity(UUID userId, Market market, String symbol, TimeResolution resolution, Instant entryAt,
             BigDecimal entryPrice,
-            BigDecimal stopLossPrice, BigDecimal positionPct, AnalyzeDirection direction,
+            AnalyzeDirection direction,
             double trendScore, double volatilityScore, double locationScore,
             double pressureScore, double pressureRaw, double pressureView, AnalyzeScenario scenario,
             String policyVersion, Instant createdAt) {
@@ -101,8 +95,6 @@ public class AnalysisResultEntity {
         this.resolution = resolution;
         this.entryAt = entryAt;
         this.entryPrice = entryPrice;
-        this.stopLossPrice = stopLossPrice;
-        this.positionPct = positionPct;
         this.direction = direction;
         this.trendScore = trendScore;
         this.volatilityScore = volatilityScore;

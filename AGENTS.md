@@ -45,13 +45,10 @@
 - 해석 결과 snapshot은 분석 결과 저장 레코드에 함께 보존할 수 있다. 단, 사용자 문장(summary)처럼 변경 가능한 표현값은 저장 기준값으로 취급하지 않는다.
 - 로그인 사용자 저장 레코드에는 최소한 `resolution`, `scenario`, `policyVersion`을 포함해 당시 해석 기준을 재현 가능하게 남긴다.
 - 룩어헤드 방지: `entryAt` 버킷 캔들은 지표 계산에서 제외한다.
-- 손절가는 분석 입력으로 유지한다. 손절가는 setup 무효화 지점과 리스크 크기를 규정하는 핵심 입력으로 본다.
 - 익절가는 기본 분석 입력에서 제거한다. 익절가는 setup 자체의 성립보다 운영 전략 선택에 가까운 값으로 간주한다.
-- 사용자 입력은 기본 모드 기준 `market, symbol, resolution, entryAt, entryPrice, stopLossPrice, positionPct`를 사용한다.
-- 방향(`LONG/SHORT`)은 손절가와 진입가의 가격관계로 추론한다.
-  - `stopLoss < entry` => LONG
-  - `entry < stopLoss` => SHORT
-  - 그 외는 `InvalidInput`
+- 사용자 입력은 기본 모드 기준 `market, symbol, resolution, entryAt, entryPrice, direction`을 사용한다.
+- 방향(`LONG/SHORT`)은 사용자 입력으로 직접 받는다.
+- 손절가와 포지션 비중은 현재 기본 분석 입력에서 제거한다.
 - 비로그인 사용자도 분석 요청 가능하다.
 - 로그인 사용자 요청은 분석 결과를 저장한다(현재 구현은 DB persist 활성화).
 

@@ -32,8 +32,6 @@ public class AnalysisResultRepositoryJpaAdapter implements AnalysisResultReposit
                 request.resolution(),
                 request.entryAt(),
                 request.entryPrice(),
-                request.stopLossPrice(),
-                request.positionPct(),
                 result.direction(),
                 result.trendScore(),
                 result.volatilityScore(),
