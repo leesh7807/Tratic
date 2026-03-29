@@ -1,6 +1,5 @@
 package app.leesh.tratic.analyze.service;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -43,23 +42,9 @@ public class AnalyzeService {
     public Result<AnalyzeInterpretation, AnalyzeFailure> analyze(AnalyzeRequest request, UUID authenticatedUserId) {
         TimeResolution resolution = request.resolution();
         AnalysisEngineParams engineParams = analysisEnginePolicy.resolve(resolution);
-        return resolveDirection(request.entryPrice(), request.stopLossPrice())
-                .flatMap(direction -> collectCandles(request)
-                        .flatMap(candles -> analyzeCandles(candles, direction, engineParams))
-                        .map(analyzed -> persistAndInterpret(authenticatedUserId, request, analyzed)));
-    }
-
-    private Result<AnalyzeDirection, AnalyzeFailure> resolveDirection(BigDecimal entryPrice, BigDecimal stopLossPrice) {
-        if (isLess(stopLossPrice, entryPrice)) {
-            return Result.ok(AnalyzeDirection.LONG);
-        }
-
-        if (isGreater(stopLossPrice, entryPrice)) {
-            return Result.ok(AnalyzeDirection.SHORT);
-        }
-
-        return Result.err(new AnalyzeFailure.InvalidInput(
-                "cannot determine direction from entry/stopLoss prices"));
+        return collectCandles(request)
+                .flatMap(candles -> analyzeCandles(candles, request.direction(), engineParams))
+                .map(analyzed -> persistAndInterpret(authenticatedUserId, request, analyzed));
     }
 
     private Result<List<Candle>, AnalyzeFailure> collectCandles(AnalyzeRequest request) {
@@ -94,13 +79,5 @@ public class AnalyzeService {
         }
 
         return interpretation;
-    }
-
-    private boolean isLess(BigDecimal left, BigDecimal right) {
-        return left.compareTo(right) < 0;
-    }
-
-    private boolean isGreater(BigDecimal left, BigDecimal right) {
-        return left.compareTo(right) > 0;
     }
 }

@@ -3,9 +3,9 @@ package app.leesh.tratic.analyze.controller;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
-import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,8 +22,6 @@ public record AnalyzeRequestDto(
         @NotNull Instant entryAt,
         @Schema(description = "Entry price", example = "100.0")
         @NotNull @DecimalMin("0.0") BigDecimal entryPrice,
-        @Schema(description = "Stop loss price", example = "90.0")
-        @NotNull @DecimalMin("0.0") BigDecimal stopLossPrice,
-        @Schema(description = "Position size percentage", example = "25.5")
-        @DecimalMin("0.0") @DecimalMax("100.0") BigDecimal positionPct) {
+        @Schema(description = "Trade direction", example = "LONG")
+        @NotNull AnalyzeDirection direction) {
 }

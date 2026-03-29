@@ -62,7 +62,7 @@ public class AnalyzeServiceTest {
     @Test
     @DisplayName("로그인 사용자면 분석 결과를 저장한다")
     public void analyze_saves_when_authenticated_user() {
-        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "95", "30");
+        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
@@ -78,7 +78,7 @@ public class AnalyzeServiceTest {
     @Test
     @DisplayName("비로그인 사용자면 분석 결과를 저장하지 않는다")
     public void analyze_does_not_save_when_guest_user() {
-        AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "95", null);
+        AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
@@ -92,9 +92,9 @@ public class AnalyzeServiceTest {
     }
 
     @Test
-    @DisplayName("손절가가 진입가보다 낮으면 LONG으로 분석한다")
-    public void analyze_infers_long_when_stop_loss_is_below_entry() {
-        AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "98", null);
+    @DisplayName("direction이 LONG이면 LONG으로 분석한다")
+    public void analyze_uses_long_direction_from_request() {
+        AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
@@ -107,9 +107,9 @@ public class AnalyzeServiceTest {
     }
 
     @Test
-    @DisplayName("손절가가 진입가보다 높으면 SHORT로 분석한다")
-    public void analyze_infers_short_when_stop_loss_is_above_entry() {
-        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "102", null);
+    @DisplayName("direction이 SHORT면 SHORT로 분석한다")
+    public void analyze_uses_short_direction_from_request() {
+        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.SHORT);
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
@@ -122,22 +122,9 @@ public class AnalyzeServiceTest {
     }
 
     @Test
-    @DisplayName("손절가가 진입가와 같으면 InvalidInput을 반환한다")
-    public void analyze_returns_invalid_input_when_stop_loss_equals_entry() {
-        AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "100", null);
-
-        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
-
-        assertInstanceOf(Result.Err.class, result);
-        AnalyzeFailure failure = ((Result.Err<AnalyzeInterpretation, AnalyzeFailure>) result).error();
-        assertInstanceOf(AnalyzeFailure.InvalidInput.class, failure);
-        verify(chartService, never()).collectChart(any());
-    }
-
-    @Test
     @DisplayName("차트 수집 실패는 분석 실패로 매핑한다")
     public void analyze_maps_chart_failure() {
-        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "95", "50");
+        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.err(new ChartFetchFailure.RateLimited(Market.BINANCE, null)));
@@ -152,7 +139,7 @@ public class AnalyzeServiceTest {
     @Test
     @DisplayName("수집된 캔들이 부족하면 InsufficientCandles를 반환한다")
     public void analyze_returns_insufficient_candles_when_collected_data_is_too_short() {
-        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "95", "50");
+        AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
         when(analyzePolicy.fetchCandleCount()).thenReturn(120L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
@@ -214,16 +201,15 @@ public class AnalyzeServiceTest {
         return Chart.of(signature, CandleSeries.ofSorted(candles));
     }
 
-    private AnalyzeRequest request(Market market, String symbol, Instant entryAt, String entryPrice, String stopLossPrice,
-            String positionPct) {
+    private AnalyzeRequest request(Market market, String symbol, Instant entryAt, String entryPrice,
+            AnalyzeDirection direction) {
         return new AnalyzeRequest(
                 market,
                 symbol,
                 RESOLUTION,
                 entryAt,
                 bd(entryPrice),
-                bd(stopLossPrice),
-                positionPct == null ? null : bd(positionPct));
+                direction);
     }
 
     // Mirrors the current analyze-engine.yml defaults as hard-coded test data.

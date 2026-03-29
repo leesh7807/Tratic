@@ -61,8 +61,7 @@ public class AnalyzeController {
                 request.resolution(),
                 request.entryAt(),
                 request.entryPrice(),
-                request.stopLossPrice(),
-                request.positionPct());
+                request.direction());
 
         UUID authenticatedUserId = resolveUserId(authentication);
         return analyzeService.analyze(analyzeRequest, authenticatedUserId)

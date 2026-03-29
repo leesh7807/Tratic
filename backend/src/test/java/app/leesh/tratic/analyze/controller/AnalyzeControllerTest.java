@@ -90,7 +90,7 @@ public class AnalyzeControllerTest {
         ArgumentCaptor<AnalyzeRequest> captor = ArgumentCaptor.forClass(AnalyzeRequest.class);
         verify(analyzeService).analyze(captor.capture(), eq(userId));
         assertEquals(TimeResolution.M15, captor.getValue().resolution());
-        assertEquals(new BigDecimal("25.5"), captor.getValue().positionPct());
+        assertEquals(AnalyzeDirection.LONG, captor.getValue().direction());
     }
 
     @Test
@@ -126,8 +126,7 @@ public class AnalyzeControllerTest {
                 TimeResolution.M15,
                 Instant.parse("2026-01-10T10:00:00Z"),
                 new BigDecimal("100"),
-                new BigDecimal("90"),
-                new BigDecimal("25.5"));
+                AnalyzeDirection.LONG);
     }
 
     private AnalyzeInterpretation sampleResult() {
