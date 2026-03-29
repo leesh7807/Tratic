@@ -34,6 +34,7 @@ import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.service.ChartService;
 import app.leesh.tratic.chart.service.error.ChartFetchFailure;
 import app.leesh.tratic.shared.Result;
+import app.leesh.tratic.symbol.service.SymbolCatalog;
 
 @ExtendWith(MockitoExtension.class)
 public class AnalyzeServiceTest {
@@ -43,6 +44,9 @@ public class AnalyzeServiceTest {
 
     @Mock
     private ChartService chartService;
+
+    @Mock
+    private SymbolCatalog symbolCatalog;
 
     @Mock
     private AnalyzePolicy analyzePolicy;
@@ -64,6 +68,7 @@ public class AnalyzeServiceTest {
     public void analyze_saves_when_authenticated_user() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "95", "30");
 
+        when(symbolCatalog.contains(Market.BINANCE, "BTCUSDT")).thenReturn(true);
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.BINANCE, "BTCUSDT")));
@@ -80,6 +85,7 @@ public class AnalyzeServiceTest {
     public void analyze_does_not_save_when_guest_user() {
         AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "95", null);
 
+        when(symbolCatalog.contains(Market.UPBIT, "KRW-BTC")).thenReturn(true);
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.UPBIT, "KRW-BTC")));
@@ -96,6 +102,7 @@ public class AnalyzeServiceTest {
     public void analyze_infers_long_when_stop_loss_is_below_entry() {
         AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "98", null);
 
+        when(symbolCatalog.contains(Market.UPBIT, "KRW-BTC")).thenReturn(true);
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.UPBIT, "KRW-BTC")));
@@ -111,6 +118,7 @@ public class AnalyzeServiceTest {
     public void analyze_infers_short_when_stop_loss_is_above_entry() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "102", null);
 
+        when(symbolCatalog.contains(Market.BINANCE, "BTCUSDT")).thenReturn(true);
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.BINANCE, "BTCUSDT")));
@@ -126,6 +134,7 @@ public class AnalyzeServiceTest {
     public void analyze_returns_invalid_input_when_stop_loss_equals_entry() {
         AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", "100", null);
 
+        when(symbolCatalog.contains(Market.UPBIT, "KRW-BTC")).thenReturn(true);
         Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
         assertInstanceOf(Result.Err.class, result);
@@ -139,6 +148,7 @@ public class AnalyzeServiceTest {
     public void analyze_maps_chart_failure() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "95", "50");
 
+        when(symbolCatalog.contains(Market.BINANCE, "BTCUSDT")).thenReturn(true);
         when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.err(new ChartFetchFailure.RateLimited(Market.BINANCE, null)));
 
@@ -154,6 +164,7 @@ public class AnalyzeServiceTest {
     public void analyze_returns_insufficient_candles_when_collected_data_is_too_short() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", "95", "50");
 
+        when(symbolCatalog.contains(Market.BINANCE, "BTCUSDT")).thenReturn(true);
         when(analyzePolicy.fetchCandleCount()).thenReturn(120L);
         when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleShortChart(Market.BINANCE, "BTCUSDT")));
@@ -163,6 +174,21 @@ public class AnalyzeServiceTest {
         assertInstanceOf(Result.Err.class, result);
         AnalyzeFailure failure = ((Result.Err<AnalyzeInterpretation, AnalyzeFailure>) result).error();
         assertInstanceOf(AnalyzeFailure.InsufficientCandles.class, failure);
+    }
+
+    @Test
+    @DisplayName("카탈로그에 없는 심볼이면 InvalidInput을 반환한다")
+    public void analyze_returns_invalid_input_when_symbol_is_not_in_catalog() {
+        AnalyzeRequest req = request(Market.BINANCE, "UNKNOWN", ENTRY_AT, "100", "95", null);
+
+        when(symbolCatalog.contains(Market.BINANCE, "UNKNOWN")).thenReturn(false);
+
+        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
+
+        assertInstanceOf(Result.Err.class, result);
+        AnalyzeFailure failure = ((Result.Err<AnalyzeInterpretation, AnalyzeFailure>) result).error();
+        assertInstanceOf(AnalyzeFailure.InvalidInput.class, failure);
+        verify(chartService, never()).collectChart(any());
     }
 
     private AnalyzeInterpretation sampleInterpretation() {

@@ -20,20 +20,23 @@ import app.leesh.tratic.chart.domain.TimeResolution;
 import app.leesh.tratic.chart.service.ChartFetchRequest;
 import app.leesh.tratic.chart.service.ChartService;
 import app.leesh.tratic.shared.Result;
+import app.leesh.tratic.symbol.service.SymbolCatalog;
 
 @Service
 public class AnalyzeService {
     private final ChartService chartService;
+    private final SymbolCatalog symbolCatalog;
     private final AnalyzePolicy analyzePolicy;
     private final AnalysisEnginePolicy analysisEnginePolicy;
     private final AnalysisResultRepository analysisResultRepository;
     private final AnalyzeInterpreter analyzeInterpreter;
 
-    public AnalyzeService(ChartService chartService, AnalyzePolicy analyzePolicy,
+    public AnalyzeService(ChartService chartService, SymbolCatalog symbolCatalog, AnalyzePolicy analyzePolicy,
             AnalysisEnginePolicy analysisEnginePolicy,
             AnalysisResultRepository analysisResultRepository,
             AnalyzeInterpreter analyzeInterpreter) {
         this.chartService = chartService;
+        this.symbolCatalog = symbolCatalog;
         this.analyzePolicy = analyzePolicy;
         this.analysisEnginePolicy = analysisEnginePolicy;
         this.analysisResultRepository = analysisResultRepository;
@@ -43,10 +46,19 @@ public class AnalyzeService {
     public Result<AnalyzeInterpretation, AnalyzeFailure> analyze(AnalyzeRequest request, UUID authenticatedUserId) {
         TimeResolution resolution = request.resolution();
         AnalysisEngineParams engineParams = analysisEnginePolicy.resolve(resolution);
-        return resolveDirection(request.entryPrice(), request.stopLossPrice())
+        return validateSymbol(request)
+                .flatMap(ignored -> resolveDirection(request.entryPrice(), request.stopLossPrice()))
                 .flatMap(direction -> collectCandles(request)
                         .flatMap(candles -> analyzeCandles(candles, direction, engineParams))
                         .map(analyzed -> persistAndInterpret(authenticatedUserId, request, analyzed)));
+    }
+
+    private Result<Void, AnalyzeFailure> validateSymbol(AnalyzeRequest request) {
+        boolean exists = symbolCatalog.contains(request.market(), request.symbol());
+        if (!exists) {
+            return Result.err(new AnalyzeFailure.InvalidInput("unsupported symbol for market"));
+        }
+        return Result.ok(null);
     }
 
     private Result<AnalyzeDirection, AnalyzeFailure> resolveDirection(BigDecimal entryPrice, BigDecimal stopLossPrice) {
