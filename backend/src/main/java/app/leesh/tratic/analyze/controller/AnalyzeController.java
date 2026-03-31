@@ -76,7 +76,8 @@ public class AnalyzeController {
     private AnalyzeResponseDto toResponseDto(AnalyzeInterpretation value) {
         return new AnalyzeResponseDto(
                 value.scenario(),
-                interpretationRenderer.render(value));
+                interpretationRenderer.render(value),
+                value.signals());
     }
 
     private ApiError toApiError(AnalyzeFailure failure) {

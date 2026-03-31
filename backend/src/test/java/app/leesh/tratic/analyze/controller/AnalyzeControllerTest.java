@@ -69,6 +69,7 @@ public class AnalyzeControllerTest {
         AnalyzeResponseDto body = assertResponseBody(response);
         assertEquals(AnalyzeScenario.BULLISH_TREND_CONTINUATION, body.scenario());
         assertEquals("요약", body.summary());
+        assertEquals(new AnalyzeSignalLabels("BULL", "BALANCED", "UPPER_RANGE", "BUY"), body.signals());
         verify(analyzeService).analyze(any(AnalyzeRequest.class), eq(null));
     }
 
@@ -88,6 +89,7 @@ public class AnalyzeControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         AnalyzeResponseDto body = assertResponseBody(response);
         assertEquals("요약", body.summary());
+        assertEquals(new AnalyzeSignalLabels("BULL", "BALANCED", "UPPER_RANGE", "BUY"), body.signals());
         ArgumentCaptor<AnalyzeRequest> captor = ArgumentCaptor.forClass(AnalyzeRequest.class);
         verify(analyzeService).analyze(captor.capture(), eq(userId));
         assertEquals(TimeResolution.M15, captor.getValue().resolution());
