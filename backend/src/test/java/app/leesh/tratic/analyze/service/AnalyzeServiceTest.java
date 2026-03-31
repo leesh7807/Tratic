@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.analyze.domain.AnalysisEngineParams;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
+import app.leesh.tratic.analyze.domain.interpretation.AnalyzeSignalLabels;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
@@ -169,9 +170,7 @@ public class AnalyzeServiceTest {
         return new AnalyzeInterpretation(
                 AnalyzeDirection.LONG,
                 AnalyzeScenario.BULLISH_TREND_CONTINUATION,
-                "CONTINUATION",
-                "HIGH",
-                "MEDIUM",
+                new AnalyzeSignalLabels("BULL", "BALANCED", "UPPER_RANGE", "BUY"),
                 "matrix-v1");
     }
 
@@ -179,9 +178,7 @@ public class AnalyzeServiceTest {
         return new AnalyzeInterpretation(
                 AnalyzeDirection.SHORT,
                 AnalyzeScenario.BEARISH_TREND_CONTINUATION,
-                "CONTINUATION",
-                "HIGH",
-                "MEDIUM",
+                new AnalyzeSignalLabels("BEAR", "BALANCED", "LOWER_RANGE", "SELL"),
                 "matrix-v1");
     }
 

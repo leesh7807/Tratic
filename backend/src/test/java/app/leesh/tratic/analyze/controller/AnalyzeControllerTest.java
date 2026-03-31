@@ -27,6 +27,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
+import app.leesh.tratic.analyze.domain.interpretation.AnalyzeSignalLabels;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
 import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
@@ -134,9 +135,7 @@ public class AnalyzeControllerTest {
         return new AnalyzeInterpretation(
                 AnalyzeDirection.LONG,
                 AnalyzeScenario.BULLISH_TREND_CONTINUATION,
-                "CONTINUATION",
-                "HIGH",
-                "MEDIUM",
+                new AnalyzeSignalLabels("BULL", "BALANCED", "UPPER_RANGE", "BUY"),
                 "matrix-v1");
     }
 

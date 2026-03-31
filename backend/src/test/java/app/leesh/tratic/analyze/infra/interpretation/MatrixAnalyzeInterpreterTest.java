@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
+import app.leesh.tratic.analyze.domain.interpretation.AnalyzeSignalLabels;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
 
 public class MatrixAnalyzeInterpreterTest {
@@ -27,7 +28,7 @@ public class MatrixAnalyzeInterpreterTest {
                 0.31));
 
         assertEquals(AnalyzeScenario.BULLISH_TREND_CONTINUATION, interpretation.scenario());
-        assertEquals("CONTINUATION_UP", interpretation.bias());
+        assertEquals(new AnalyzeSignalLabels("BULL", "EXPANSION", "UPPER_RANGE", "BUY"), interpretation.signals());
         assertEquals("matrix-v1", interpretation.policyVersion());
     }
 
@@ -46,7 +47,7 @@ public class MatrixAnalyzeInterpreterTest {
                 -0.18));
 
         assertEquals(AnalyzeScenario.DISTRIBUTION_WARNING, interpretation.scenario());
-        assertEquals("EXHAUSTION", interpretation.bias());
+        assertEquals(new AnalyzeSignalLabels("BULL", "EXPANSION", "PREMIUM", "SELL"), interpretation.signals());
     }
 
     @Test
@@ -64,6 +65,7 @@ public class MatrixAnalyzeInterpreterTest {
                 0.70));
 
         assertEquals(AnalyzeScenario.INDECISIVE_TRANSITION, interpretation.scenario());
-        assertEquals("TRANSITION", interpretation.bias());
+        assertEquals(new AnalyzeSignalLabels("STRONG_BULL", "CALM", "MID_RANGE", "STRONG_BUY"),
+                interpretation.signals());
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
 import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
+import app.leesh.tratic.analyze.domain.interpretation.AnalyzeSignalLabels;
 import app.leesh.tratic.analyze.service.AnalyzeInterpreter;
 
 @Component
@@ -43,9 +44,7 @@ public class MatrixAnalyzeInterpreter implements AnalyzeInterpreter {
         return new AnalyzeInterpretation(
                 result.direction(),
                 scenario.scenario(),
-                scenario.bias(),
-                scenario.confidence(),
-                scenario.riskLevel(),
+                signals.toLabels(),
                 policy.policyVersion());
     }
 
@@ -68,6 +67,10 @@ public class MatrixAnalyzeInterpreter implements AnalyzeInterpreter {
             Objects.requireNonNull(volatility, "volatility must not be null");
             Objects.requireNonNull(location, "location must not be null");
             Objects.requireNonNull(pressure, "pressure must not be null");
+        }
+
+        private AnalyzeSignalLabels toLabels() {
+            return new AnalyzeSignalLabels(trend, volatility, location, pressure);
         }
     }
 }
