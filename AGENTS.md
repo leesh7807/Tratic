@@ -73,10 +73,10 @@
 
 ## 분석 응답 계약 결정
 - `/api/analyze`의 외부 응답은 raw 지표값 나열보다 해석 결과 전달을 우선한다.
-- 현재 응답 계약은 `scenario, summary`를 기준으로 유지한다.
+- 현재 외부 응답 계약은 `scenario, summary`를 기준으로 유지한다.
 - `scenario`는 안정 식별자이며, `summary`는 교체 가능한 렌더러가 생성하는 표현값으로 본다.
 - `direction`은 내부 분석과 저장 재현을 위한 값으로 유지하되, 현재 외부 응답 계약에는 노출하지 않는다.
-- matrix 해석기의 `bias`, `confidence`, `riskLevel`은 현재 외부 응답 계약에 노출하지 않는다. 이 값들은 matrix rule 내부 메타로만 유지한다.
+- `bias`, `confidence`, `riskLevel`은 scenario의 부가 메타데이터로 간주하며, 현재 외부 응답 계약과 기본 결과 UX에 노출하지 않는다. 이 값들은 matrix rule 내부 메타로만 유지한다.
 - raw analyze 축 점수(`trend`, `volatility`, `location`, `pressure_*`)는 현재 외부 응답 계약에 직접 노출하지 않는다.
 - 익절가를 입력으로 받지 않는 대신, 필요하면 결과/후속 UX에서 목표 구간이나 청산 시나리오를 제안하는 방향으로 확장한다.
 
