@@ -1,4 +1,4 @@
-package app.leesh.tratic.analyze.domain.band;
+package app.leesh.tratic.analyze.domain.classification;
 
 public enum PressureBand {
     STRONG_SELL("강한 매도"),

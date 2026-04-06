@@ -1,4 +1,4 @@
-package app.leesh.tratic.analyze.domain.band;
+package app.leesh.tratic.analyze.domain.classification;
 
 public enum TrendBand {
     STRONG_BEAR("강한 하락"),

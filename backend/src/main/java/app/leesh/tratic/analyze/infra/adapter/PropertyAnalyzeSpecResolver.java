@@ -2,6 +2,7 @@ package app.leesh.tratic.analyze.infra.adapter;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.function.Function;
 
 import org.springframework.stereotype.Component;
@@ -9,37 +10,37 @@ import org.springframework.stereotype.Component;
 import app.leesh.tratic.analyze.domain.AnalyzeEngineParams;
 import app.leesh.tratic.analyze.domain.AnalyzeSpec;
 import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
-import app.leesh.tratic.analyze.domain.band.AnalyzeBandRange;
-import app.leesh.tratic.analyze.domain.band.AnalyzeBandSet;
-import app.leesh.tratic.analyze.domain.band.AnalyzeBandSpec;
-import app.leesh.tratic.analyze.domain.band.LocationBand;
-import app.leesh.tratic.analyze.domain.band.PressureBand;
-import app.leesh.tratic.analyze.domain.band.TrendBand;
-import app.leesh.tratic.analyze.infra.config.AnalyzeBandProps;
-import app.leesh.tratic.analyze.infra.config.AnalyzeBandRangeProps;
-import app.leesh.tratic.analyze.infra.config.AnalyzeBandSetProps;
+import app.leesh.tratic.analyze.domain.classification.AnalyzeClassificationSpec;
+import app.leesh.tratic.analyze.domain.classification.LocationBand;
+import app.leesh.tratic.analyze.domain.classification.PressureBand;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRange;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRanges;
+import app.leesh.tratic.analyze.domain.classification.TrendBand;
+import app.leesh.tratic.analyze.infra.config.AnalyzeClassificationProps;
 import app.leesh.tratic.analyze.infra.config.AnalyzeEngineProps;
 import app.leesh.tratic.analyze.infra.config.AnalyzeProps;
+import app.leesh.tratic.analyze.infra.config.ScoreClassificationRangeProps;
+import app.leesh.tratic.analyze.infra.config.ScoreClassificationRangesProps;
 import app.leesh.tratic.chart.domain.TimeResolution;
 
 @Component
 public class PropertyAnalyzeSpecResolver implements AnalyzeSpecResolver {
-    private final AnalyzeProps analyzeProps;
+    private final AnalyzeSpec defaultSpec;
+    private final Map<TimeResolution, AnalyzeSpec> specsByResolution;
 
     public PropertyAnalyzeSpecResolver(AnalyzeProps analyzeProps) {
-        this.analyzeProps = analyzeProps;
         validateFetchCount(analyzeProps);
+        AnalyzeClassificationSpec classificationSpec = toClassificationSpec(analyzeProps.classification());
+        this.defaultSpec = new AnalyzeSpec(analyzeProps.engine().defaults(), classificationSpec);
+        this.specsByResolution = analyzeProps.engine().byResolution().entrySet().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry -> new AnalyzeSpec(entry.getValue(), classificationSpec)));
     }
 
     @Override
     public AnalyzeSpec resolve(TimeResolution resolution) {
-        return new AnalyzeSpec(
-                resolveEngineParams(analyzeProps.engine(), resolution),
-                toBandSpec(analyzeProps.bands()));
-    }
-
-    private AnalyzeEngineParams resolveEngineParams(AnalyzeEngineProps engineProps, TimeResolution resolution) {
-        return engineProps.byResolution().getOrDefault(resolution, engineProps.defaults());
+        return specsByResolution.getOrDefault(resolution, defaultSpec);
     }
 
     private void validateFetchCount(AnalyzeProps props) {
@@ -59,23 +60,24 @@ public class PropertyAnalyzeSpecResolver implements AnalyzeSpecResolver {
         }
     }
 
-    private AnalyzeBandSpec toBandSpec(AnalyzeBandProps bandProps) {
-        return new AnalyzeBandSpec(
-                toBandSet(bandProps.trend(), TrendBand::valueOf),
-                toBandSet(bandProps.location(), LocationBand::valueOf),
-                toBandSet(bandProps.pressure(), PressureBand::valueOf));
+    private AnalyzeClassificationSpec toClassificationSpec(AnalyzeClassificationProps classificationProps) {
+        return new AnalyzeClassificationSpec(
+                toClassificationRanges(classificationProps.trend(), TrendBand::valueOf),
+                toClassificationRanges(classificationProps.location(), LocationBand::valueOf),
+                toClassificationRanges(classificationProps.pressure(), PressureBand::valueOf));
     }
 
-    private <E extends Enum<E>> AnalyzeBandSet<E> toBandSet(AnalyzeBandSetProps props, Function<String, E> enumResolver) {
-        List<AnalyzeBandRange<E>> ranges = props.ranges().stream()
-                .map(range -> toBandRange(range, enumResolver))
-                .toList();
-        return new AnalyzeBandSet<>(ranges);
-    }
-
-    private <E extends Enum<E>> AnalyzeBandRange<E> toBandRange(AnalyzeBandRangeProps props,
+    private <E extends Enum<E>> ScoreClassificationRanges<E> toClassificationRanges(ScoreClassificationRangesProps props,
             Function<String, E> enumResolver) {
-        return new AnalyzeBandRange<>(
+        List<ScoreClassificationRange<E>> ranges = props.ranges().stream()
+                .map(range -> toClassificationRange(range, enumResolver))
+                .toList();
+        return new ScoreClassificationRanges<>(ranges);
+    }
+
+    private <E extends Enum<E>> ScoreClassificationRange<E> toClassificationRange(ScoreClassificationRangeProps props,
+            Function<String, E> enumResolver) {
+        return new ScoreClassificationRange<>(
                 enumResolver.apply(props.code()),
                 props.minInclusive(),
                 props.maxExclusive());

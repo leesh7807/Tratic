@@ -9,6 +9,10 @@ import org.springframework.stereotype.Service;
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.analyze.domain.AnalyzeEngine;
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
+import app.leesh.tratic.analyze.domain.AnalyzeSpec;
+import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
+import app.leesh.tratic.analyze.domain.classification.AnalyzeClassificationSpec;
+import app.leesh.tratic.analyze.domain.classification.ClassifiedAnalyzeResult;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.ChartSignature;
@@ -23,21 +27,24 @@ public class AnalyzeService {
     private final ChartService chartService;
     private final AnalyzeFetchCountConfig analyzeFetchCountConfig;
     private final AnalyzeEngine analyzeEngine;
+    private final AnalyzeSpecResolver analyzeSpecResolver;
     private final AnalyzeResultRepository analyzeResultRepository;
 
     public AnalyzeService(ChartService chartService, AnalyzeFetchCountConfig analyzeFetchCountConfig,
             AnalyzeEngine analyzeEngine,
+            AnalyzeSpecResolver analyzeSpecResolver,
             AnalyzeResultRepository analyzeResultRepository) {
         this.chartService = chartService;
         this.analyzeFetchCountConfig = analyzeFetchCountConfig;
         this.analyzeEngine = analyzeEngine;
+        this.analyzeSpecResolver = analyzeSpecResolver;
         this.analyzeResultRepository = analyzeResultRepository;
     }
 
-    public Result<AnalyzeResult, AnalyzeFailure> analyze(AnalyzeRequest request, UUID authenticatedUserId) {
+    public Result<ClassifiedAnalyzeResult, AnalyzeFailure> analyze(AnalyzeRequest request, UUID authenticatedUserId) {
         return collectCandles(request)
                 .flatMap(candles -> analyzeCandles(candles, request.resolution(), request.direction()))
-                .map(analyzed -> persist(authenticatedUserId, request, analyzed));
+                .map(analyzed -> classify(request, persist(authenticatedUserId, request, analyzed)));
     }
 
     private Result<List<Candle>, AnalyzeFailure> collectCandles(AnalyzeRequest request) {
@@ -71,5 +78,11 @@ public class AnalyzeService {
         }
 
         return analyzed;
+    }
+
+    private ClassifiedAnalyzeResult classify(AnalyzeRequest request, AnalyzeResult analyzed) {
+        AnalyzeSpec spec = analyzeSpecResolver.resolve(request.resolution());
+        AnalyzeClassificationSpec classificationSpec = spec.classificationSpec();
+        return classificationSpec.classify(analyzed);
     }
 }

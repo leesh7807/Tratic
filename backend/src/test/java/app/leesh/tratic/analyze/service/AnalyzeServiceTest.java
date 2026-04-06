@@ -22,7 +22,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
 import app.leesh.tratic.analyze.domain.AnalyzeEngine;
-import app.leesh.tratic.analyze.domain.AnalyzeResult;
+import app.leesh.tratic.analyze.domain.AnalyzeEngineParams;
+import app.leesh.tratic.analyze.domain.AnalyzeSpec;
+import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
+import app.leesh.tratic.analyze.domain.classification.AnalyzeClassificationSpec;
+import app.leesh.tratic.analyze.domain.classification.ClassifiedAnalyzeResult;
+import app.leesh.tratic.analyze.domain.classification.LocationBand;
+import app.leesh.tratic.analyze.domain.classification.PressureBand;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRange;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRanges;
+import app.leesh.tratic.analyze.domain.classification.TrendBand;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.CandleSeries;
@@ -51,6 +60,9 @@ public class AnalyzeServiceTest {
     private AnalyzeEngine analyzeEngine;
 
     @Mock
+    private AnalyzeSpecResolver analyzeSpecResolver;
+
+    @Mock
     private AnalyzeResultRepository analyzeResultRepository;
 
     @InjectMocks
@@ -67,7 +79,9 @@ public class AnalyzeServiceTest {
         when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.LONG)))
                 .thenReturn(sampleAnalyzeResult(AnalyzeDirection.LONG));
 
-        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
 
         assertInstanceOf(Result.Ok.class, result);
         verify(analyzeResultRepository).save(any(), any(), any());
@@ -84,7 +98,9 @@ public class AnalyzeServiceTest {
         when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.LONG)))
                 .thenReturn(sampleAnalyzeResult(AnalyzeDirection.LONG));
 
-        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
         assertInstanceOf(Result.Ok.class, result);
         verify(analyzeResultRepository, never()).save(any(), any(), any());
@@ -101,7 +117,9 @@ public class AnalyzeServiceTest {
         when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.LONG)))
                 .thenReturn(sampleAnalyzeResult(AnalyzeDirection.LONG));
 
-        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
         assertInstanceOf(Result.Ok.class, result);
     }
@@ -117,7 +135,9 @@ public class AnalyzeServiceTest {
         when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.SHORT)))
                 .thenReturn(sampleAnalyzeResult(AnalyzeDirection.SHORT));
 
-        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
         assertInstanceOf(Result.Ok.class, result);
     }
@@ -130,10 +150,10 @@ public class AnalyzeServiceTest {
         when(analyzeFetchCountConfig.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.err(new ChartFetchFailure.RateLimited(Market.BINANCE, null)));
 
-        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
 
         assertInstanceOf(Result.Err.class, result);
-        AnalyzeFailure failure = ((Result.Err<AnalyzeResult, AnalyzeFailure>) result).error();
+        AnalyzeFailure failure = ((Result.Err<ClassifiedAnalyzeResult, AnalyzeFailure>) result).error();
         assertInstanceOf(AnalyzeFailure.ChartDataUnavailable.class, failure);
     }
 
@@ -146,10 +166,10 @@ public class AnalyzeServiceTest {
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleShortChart(Market.BINANCE, "BTCUSDT")));
         when(analyzeEngine.minimumRequiredCandles(RESOLUTION)).thenReturn(105);
 
-        Result<AnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
 
         assertInstanceOf(Result.Err.class, result);
-        AnalyzeFailure failure = ((Result.Err<AnalyzeResult, AnalyzeFailure>) result).error();
+        AnalyzeFailure failure = ((Result.Err<ClassifiedAnalyzeResult, AnalyzeFailure>) result).error();
         assertInstanceOf(AnalyzeFailure.InsufficientCandles.class, failure);
     }
 
@@ -193,15 +213,62 @@ public class AnalyzeServiceTest {
                 direction);
     }
 
-    private AnalyzeResult sampleAnalyzeResult(AnalyzeDirection direction) {
-        return new AnalyzeResult(
+    private app.leesh.tratic.analyze.domain.AnalyzeResult sampleAnalyzeResult(AnalyzeDirection direction) {
+        return new app.leesh.tratic.analyze.domain.AnalyzeResult(
                 direction,
                 42.0,
-                12.0,
                 68.0,
-                35.0,
-                0.35,
-                0.21);
+                35.0);
+    }
+
+    private AnalyzeSpec spec() {
+        return new AnalyzeSpec(
+                defaultParams(),
+                new AnalyzeClassificationSpec(
+                        new ScoreClassificationRanges<>(List.of(
+                                new ScoreClassificationRange<>(TrendBand.STRONG_BEAR, -100.0, -60.0),
+                                new ScoreClassificationRange<>(TrendBand.BEAR, -60.0, -20.0),
+                                new ScoreClassificationRange<>(TrendBand.NEUTRAL, -20.0, 20.0),
+                                new ScoreClassificationRange<>(TrendBand.BULL, 20.0, 60.0),
+                                new ScoreClassificationRange<>(TrendBand.STRONG_BULL, 60.0, 100.000001))),
+                        new ScoreClassificationRanges<>(List.of(
+                                new ScoreClassificationRange<>(LocationBand.LOWEST, 0.0, 20.0),
+                                new ScoreClassificationRange<>(LocationBand.LOWER, 20.0, 40.0),
+                                new ScoreClassificationRange<>(LocationBand.MIDDLE, 40.0, 60.0),
+                                new ScoreClassificationRange<>(LocationBand.UPPER, 60.0, 80.0),
+                                new ScoreClassificationRange<>(LocationBand.HIGHEST, 80.0, 100.000001))),
+                        new ScoreClassificationRanges<>(List.of(
+                                new ScoreClassificationRange<>(PressureBand.STRONG_SELL, -100.0, -60.0),
+                                new ScoreClassificationRange<>(PressureBand.SELL, -60.0, -20.0),
+                                new ScoreClassificationRange<>(PressureBand.NEUTRAL, -20.0, 20.0),
+                                new ScoreClassificationRange<>(PressureBand.BUY, 20.0, 60.0),
+                                new ScoreClassificationRange<>(PressureBand.STRONG_BUY, 60.0, 100.000001)))));
+    }
+
+    private AnalyzeEngineParams defaultParams() {
+        return new AnalyzeEngineParams(
+                1e-9,
+                20,
+                10,
+                30,
+                0.1,
+                1e-6,
+                20,
+                30,
+                3.0,
+                1.45,
+                0.65,
+                20,
+                14,
+                100,
+                5,
+                20,
+                5,
+                0.6,
+                0.3,
+                0.1,
+                0.5,
+                1.5);
     }
 
     private BigDecimal bd(String value) {

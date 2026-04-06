@@ -1,4 +1,4 @@
-package app.leesh.tratic.analyze.domain.band;
+package app.leesh.tratic.analyze.domain.classification;
 
 public enum LocationBand {
     LOWEST("낮은 자리"),

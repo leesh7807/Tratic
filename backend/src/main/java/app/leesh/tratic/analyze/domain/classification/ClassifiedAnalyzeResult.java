@@ -1,13 +1,13 @@
-package app.leesh.tratic.analyze.domain.band;
+package app.leesh.tratic.analyze.domain.classification;
 
 import java.util.Objects;
 
-public record AnalyzeBands(
+public record ClassifiedAnalyzeResult(
         TrendBand trend,
         LocationBand location,
         PressureBand pressure) {
 
-    public AnalyzeBands {
+    public ClassifiedAnalyzeResult {
         Objects.requireNonNull(trend, "trend must not be null");
         Objects.requireNonNull(location, "location must not be null");
         Objects.requireNonNull(pressure, "pressure must not be null");

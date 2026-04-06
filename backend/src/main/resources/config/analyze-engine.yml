@@ -25,7 +25,7 @@ analyze:
       pressure-volume-weight-min: 0.5
       pressure-volume-weight-max: 1.5
     by-resolution: {}
-  bands:
+  classification:
     trend:
       ranges:
         - code: STRONG_BEAR

@@ -2,14 +2,14 @@ package app.leesh.tratic.analyze.domain;
 
 import java.util.Objects;
 
-import app.leesh.tratic.analyze.domain.band.AnalyzeBandSpec;
+import app.leesh.tratic.analyze.domain.classification.AnalyzeClassificationSpec;
 
 public record AnalyzeSpec(
         AnalyzeEngineParams engineParams,
-        AnalyzeBandSpec bandSpec) {
+        AnalyzeClassificationSpec classificationSpec) {
 
     public AnalyzeSpec {
         Objects.requireNonNull(engineParams, "engineParams must not be null");
-        Objects.requireNonNull(bandSpec, "bandSpec must not be null");
+        Objects.requireNonNull(classificationSpec, "classificationSpec must not be null");
     }
 }

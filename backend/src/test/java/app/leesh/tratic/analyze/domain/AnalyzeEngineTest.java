@@ -11,12 +11,12 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import app.leesh.tratic.analyze.domain.band.AnalyzeBandRange;
-import app.leesh.tratic.analyze.domain.band.AnalyzeBandSet;
-import app.leesh.tratic.analyze.domain.band.AnalyzeBandSpec;
-import app.leesh.tratic.analyze.domain.band.LocationBand;
-import app.leesh.tratic.analyze.domain.band.PressureBand;
-import app.leesh.tratic.analyze.domain.band.TrendBand;
+import app.leesh.tratic.analyze.domain.classification.AnalyzeClassificationSpec;
+import app.leesh.tratic.analyze.domain.classification.LocationBand;
+import app.leesh.tratic.analyze.domain.classification.PressureBand;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRange;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRanges;
+import app.leesh.tratic.analyze.domain.classification.TrendBand;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.TimeResolution;
 
@@ -24,26 +24,26 @@ public class AnalyzeEngineTest {
     @Test
     @DisplayName("밴드 범위를 변경하면 trend/location/pressure 스코어 범위도 함께 변경된다")
     public void analyze_scales_scores_to_configured_band_ranges() {
-        AnalyzeBandSpec bandSpec = new AnalyzeBandSpec(
-                new AnalyzeBandSet<>(List.of(
-                        new AnalyzeBandRange<>(TrendBand.STRONG_BEAR, -2.0, -1.0),
-                        new AnalyzeBandRange<>(TrendBand.BEAR, -1.0, -0.2),
-                        new AnalyzeBandRange<>(TrendBand.NEUTRAL, -0.2, 0.2),
-                        new AnalyzeBandRange<>(TrendBand.BULL, 0.2, 1.0),
-                        new AnalyzeBandRange<>(TrendBand.STRONG_BULL, 1.0, 2.1))),
-                new AnalyzeBandSet<>(List.of(
-                        new AnalyzeBandRange<>(LocationBand.LOWEST, 10.0, 12.0),
-                        new AnalyzeBandRange<>(LocationBand.LOWER, 12.0, 14.0),
-                        new AnalyzeBandRange<>(LocationBand.MIDDLE, 14.0, 16.0),
-                        new AnalyzeBandRange<>(LocationBand.UPPER, 16.0, 18.0),
-                        new AnalyzeBandRange<>(LocationBand.HIGHEST, 18.0, 20.1))),
-                new AnalyzeBandSet<>(List.of(
-                        new AnalyzeBandRange<>(PressureBand.STRONG_SELL, -5.0, -3.0),
-                        new AnalyzeBandRange<>(PressureBand.SELL, -3.0, -1.0),
-                        new AnalyzeBandRange<>(PressureBand.NEUTRAL, -1.0, 1.0),
-                        new AnalyzeBandRange<>(PressureBand.BUY, 1.0, 3.0),
-                        new AnalyzeBandRange<>(PressureBand.STRONG_BUY, 3.0, 5.1))));
-        AnalyzeSpecResolver specResolver = resolution -> new AnalyzeSpec(defaultParams(), bandSpec);
+        AnalyzeClassificationSpec classificationSpec = new AnalyzeClassificationSpec(
+                new ScoreClassificationRanges<>(List.of(
+                        new ScoreClassificationRange<>(TrendBand.STRONG_BEAR, -2.0, -1.0),
+                        new ScoreClassificationRange<>(TrendBand.BEAR, -1.0, -0.2),
+                        new ScoreClassificationRange<>(TrendBand.NEUTRAL, -0.2, 0.2),
+                        new ScoreClassificationRange<>(TrendBand.BULL, 0.2, 1.0),
+                        new ScoreClassificationRange<>(TrendBand.STRONG_BULL, 1.0, 2.1))),
+                new ScoreClassificationRanges<>(List.of(
+                        new ScoreClassificationRange<>(LocationBand.LOWEST, 10.0, 12.0),
+                        new ScoreClassificationRange<>(LocationBand.LOWER, 12.0, 14.0),
+                        new ScoreClassificationRange<>(LocationBand.MIDDLE, 14.0, 16.0),
+                        new ScoreClassificationRange<>(LocationBand.UPPER, 16.0, 18.0),
+                        new ScoreClassificationRange<>(LocationBand.HIGHEST, 18.0, 20.1))),
+                new ScoreClassificationRanges<>(List.of(
+                        new ScoreClassificationRange<>(PressureBand.STRONG_SELL, -5.0, -3.0),
+                        new ScoreClassificationRange<>(PressureBand.SELL, -3.0, -1.0),
+                        new ScoreClassificationRange<>(PressureBand.NEUTRAL, -1.0, 1.0),
+                        new ScoreClassificationRange<>(PressureBand.BUY, 1.0, 3.0),
+                        new ScoreClassificationRange<>(PressureBand.STRONG_BUY, 3.0, 5.1))));
+        AnalyzeSpecResolver specResolver = resolution -> new AnalyzeSpec(defaultParams(), classificationSpec);
         AnalyzeEngine analyzeEngine = new AnalyzeEngine(specResolver);
 
         AnalyzeResult result = analyzeEngine.analyze(sampleCandles(260), TimeResolution.M15, AnalyzeDirection.LONG);
@@ -54,10 +54,10 @@ public class AnalyzeEngineTest {
         assertTrue(result.locationScore() < 20.1);
         assertTrue(result.pressureScore() >= -5.0);
         assertTrue(result.pressureScore() < 5.1);
-        var bands = bandSpec.resolve(result);
-        assertNotNull(bands.trend());
-        assertNotNull(bands.location());
-        assertNotNull(bands.pressure());
+        var classified = classificationSpec.classify(result);
+        assertNotNull(classified.trend());
+        assertNotNull(classified.location());
+        assertNotNull(classified.pressure());
     }
 
     private AnalyzeEngineParams defaultParams() {

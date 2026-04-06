@@ -33,11 +33,8 @@ public class AnalyzeResultRepositoryJpaAdapter implements AnalyzeResultRepositor
                 request.entryPrice(),
                 result.direction(),
                 result.trendScore(),
-                result.volatilityScore(),
                 result.locationScore(),
                 result.pressureScore(),
-                result.pressureRaw(),
-                result.pressureView(),
                 now));
     }
 }

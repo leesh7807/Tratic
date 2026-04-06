@@ -54,20 +54,11 @@ public class AnalyzeResultEntity {
     @Column(name = "trend_score", nullable = false)
     private double trendScore;
 
-    @Column(name = "volatility_score", nullable = false)
-    private double volatilityScore;
-
     @Column(name = "location_score", nullable = false)
     private double locationScore;
 
     @Column(name = "pressure_score", nullable = false)
     private double pressureScore;
-
-    @Column(name = "pressure_raw", nullable = false)
-    private double pressureRaw;
-
-    @Column(name = "pressure_view", nullable = false)
-    private double pressureView;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -78,8 +69,7 @@ public class AnalyzeResultEntity {
     public AnalyzeResultEntity(UUID userId, Market market, String symbol, TimeResolution resolution, Instant entryAt,
             BigDecimal entryPrice,
             AnalyzeDirection direction,
-            double trendScore, double volatilityScore, double locationScore,
-            double pressureScore, double pressureRaw, double pressureView, Instant createdAt) {
+            double trendScore, double locationScore, double pressureScore, Instant createdAt) {
         this.userId = userId;
         this.market = market;
         this.symbol = symbol;
@@ -88,11 +78,8 @@ public class AnalyzeResultEntity {
         this.entryPrice = entryPrice;
         this.direction = direction;
         this.trendScore = trendScore;
-        this.volatilityScore = volatilityScore;
         this.locationScore = locationScore;
         this.pressureScore = pressureScore;
-        this.pressureRaw = pressureRaw;
-        this.pressureView = pressureView;
         this.createdAt = createdAt;
     }
 }

@@ -4,15 +4,15 @@ import java.util.Objects;
 
 import jakarta.validation.constraints.NotNull;
 
-public record AnalyzeBandRangeProps(
+public record ScoreClassificationRangeProps(
         @NotNull String code,
         double minInclusive,
         double maxExclusive) {
 
-    public AnalyzeBandRangeProps {
+    public ScoreClassificationRangeProps {
         Objects.requireNonNull(code, "code must not be null");
         if (Double.isNaN(minInclusive) || Double.isNaN(maxExclusive) || minInclusive >= maxExclusive) {
-            throw new IllegalArgumentException("band range must satisfy minInclusive < maxExclusive");
+            throw new IllegalArgumentException("classification range must satisfy minInclusive < maxExclusive");
         }
     }
 }

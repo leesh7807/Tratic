@@ -14,10 +14,10 @@ import jakarta.validation.constraints.Positive;
 public record AnalyzeProps(
         @Positive long fetchCandleCount,
         @NotNull @Valid AnalyzeEngineProps engine,
-        @NotNull @Valid AnalyzeBandProps bands) {
+        @NotNull @Valid AnalyzeClassificationProps classification) {
 
     public AnalyzeProps {
         Objects.requireNonNull(engine, "engine must not be null");
-        Objects.requireNonNull(bands, "bands must not be null");
+        Objects.requireNonNull(classification, "classification must not be null");
     }
 }

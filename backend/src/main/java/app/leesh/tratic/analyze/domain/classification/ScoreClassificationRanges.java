@@ -1,11 +1,11 @@
-package app.leesh.tratic.analyze.domain.band;
+package app.leesh.tratic.analyze.domain.classification;
 
 import java.util.List;
 
-public record AnalyzeBandSet<E extends Enum<E>>(
-        List<AnalyzeBandRange<E>> ranges) {
+public record ScoreClassificationRanges<E extends Enum<E>>(
+        List<ScoreClassificationRange<E>> ranges) {
 
-    public AnalyzeBandSet {
+    public ScoreClassificationRanges {
         if (ranges == null || ranges.isEmpty()) {
             throw new IllegalArgumentException("ranges must not be empty");
         }
@@ -16,20 +16,20 @@ public record AnalyzeBandSet<E extends Enum<E>>(
         return ranges.stream()
                 .filter(range -> range.matches(score))
                 .findFirst()
-                .map(AnalyzeBandRange::code)
-                .orElseThrow(() -> new IllegalArgumentException("no band configured for score=" + score));
+                .map(ScoreClassificationRange::code)
+                .orElseThrow(() -> new IllegalArgumentException("no classification configured for score=" + score));
     }
 
     public double minimumScore() {
         return ranges.stream()
-                .mapToDouble(AnalyzeBandRange::minInclusive)
+                .mapToDouble(ScoreClassificationRange::minInclusive)
                 .min()
                 .orElseThrow(() -> new IllegalArgumentException("ranges must not be empty"));
     }
 
     public double maximumScore() {
         double maxExclusive = ranges.stream()
-                .mapToDouble(AnalyzeBandRange::maxExclusive)
+                .mapToDouble(ScoreClassificationRange::maxExclusive)
                 .max()
                 .orElseThrow(() -> new IllegalArgumentException("ranges must not be empty"));
         return Math.nextDown(maxExclusive);

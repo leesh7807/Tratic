@@ -15,8 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import app.leesh.tratic.analyze.domain.AnalyzeResult;
-import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
+import app.leesh.tratic.analyze.domain.classification.ClassifiedAnalyzeResult;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
@@ -34,11 +33,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @Validated
 public class AnalyzeController {
     private final AnalyzeService analyzeService;
-    private final AnalyzeSpecResolver analyzeSpecResolver;
 
-    public AnalyzeController(AnalyzeService analyzeService, AnalyzeSpecResolver analyzeSpecResolver) {
+    public AnalyzeController(AnalyzeService analyzeService) {
         this.analyzeService = analyzeService;
-        this.analyzeSpecResolver = analyzeSpecResolver;
     }
 
     @PostMapping
@@ -65,19 +62,15 @@ public class AnalyzeController {
 
         UUID authenticatedUserId = resolveUserId(authentication);
         return analyzeService.analyze(analyzeRequest, authenticatedUserId)
-                .map(result -> toResponseDto(request, result))
+                .map(this::toResponseDto)
                 .mapError(this::toApiError)
                 .fold(
                         ResponseEntity::ok,
                         this::toErrorResponse);
     }
 
-    private AnalyzeResponseDto toResponseDto(AnalyzeRequestDto request, AnalyzeResult value) {
-        var bands = analyzeSpecResolver.resolve(request.resolution()).bandSpec().resolve(value);
-        return new AnalyzeResponseDto(
-                bands.trend().displayKo(),
-                bands.location().displayKo(),
-                bands.pressure().displayKo());
+    private AnalyzeResponseDto toResponseDto(ClassifiedAnalyzeResult classified) {
+        return AnalyzeResponseDto.from(classified);
     }
 
     private ApiError toApiError(AnalyzeFailure failure) {
