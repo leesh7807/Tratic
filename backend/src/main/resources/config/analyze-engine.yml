@@ -25,3 +25,55 @@ analyze:
       pressure-volume-weight-min: 0.5
       pressure-volume-weight-max: 1.5
     by-resolution: {}
+  bands:
+    trend:
+      ranges:
+        - code: STRONG_BEAR
+          min-inclusive: -100.0
+          max-exclusive: -60.0
+        - code: BEAR
+          min-inclusive: -60.0
+          max-exclusive: -20.0
+        - code: NEUTRAL
+          min-inclusive: -20.0
+          max-exclusive: 20.0
+        - code: BULL
+          min-inclusive: 20.0
+          max-exclusive: 60.0
+        - code: STRONG_BULL
+          min-inclusive: 60.0
+          max-exclusive: 100.000001
+    location:
+      ranges:
+        - code: LOWEST
+          min-inclusive: 0.0
+          max-exclusive: 20.0
+        - code: LOWER
+          min-inclusive: 20.0
+          max-exclusive: 40.0
+        - code: MIDDLE
+          min-inclusive: 40.0
+          max-exclusive: 60.0
+        - code: UPPER
+          min-inclusive: 60.0
+          max-exclusive: 80.0
+        - code: HIGHEST
+          min-inclusive: 80.0
+          max-exclusive: 100.000001
+    pressure:
+      ranges:
+        - code: STRONG_SELL
+          min-inclusive: -100.0
+          max-exclusive: -60.0
+        - code: SELL
+          min-inclusive: -60.0
+          max-exclusive: -20.0
+        - code: NEUTRAL
+          min-inclusive: -20.0
+          max-exclusive: 20.0
+        - code: BUY
+          min-inclusive: 20.0
+          max-exclusive: 60.0
+        - code: STRONG_BUY
+          min-inclusive: 60.0
+          max-exclusive: 100.000001

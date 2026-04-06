@@ -1,5 +1,5 @@
 package app.leesh.tratic.analyze.service;
 
-public interface AnalyzePolicy {
+public interface AnalyzeFetchCountConfig {
     long fetchCandleCount();
 }

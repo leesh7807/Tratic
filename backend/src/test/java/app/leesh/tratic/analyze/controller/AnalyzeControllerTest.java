@@ -26,9 +26,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
-import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
+import app.leesh.tratic.analyze.domain.AnalyzeEngineParams;
+import app.leesh.tratic.analyze.domain.AnalyzeResult;
+import app.leesh.tratic.analyze.domain.AnalyzeSpec;
+import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
+import app.leesh.tratic.analyze.domain.band.AnalyzeBandRange;
+import app.leesh.tratic.analyze.domain.band.AnalyzeBandSet;
+import app.leesh.tratic.analyze.domain.band.AnalyzeBandSpec;
+import app.leesh.tratic.analyze.domain.band.LocationBand;
+import app.leesh.tratic.analyze.domain.band.PressureBand;
+import app.leesh.tratic.analyze.domain.band.TrendBand;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
@@ -43,13 +50,13 @@ public class AnalyzeControllerTest {
     private AnalyzeService analyzeService;
 
     @Mock
+    private AnalyzeSpecResolver analyzeSpecResolver;
+
+    @Mock
     private Authentication authentication;
 
     @Mock
     private OAuth2User oAuth2User;
-
-    @Mock
-    private AnalyzeInterpretationRenderer interpretationRenderer;
 
     @InjectMocks
     private AnalyzeController analyzeController;
@@ -59,15 +66,16 @@ public class AnalyzeControllerTest {
     public void analyze_guest_user_passes_null_user_id() {
         AnalyzeRequestDto request = requestDto();
 
+        when(analyzeSpecResolver.resolve(TimeResolution.M15)).thenReturn(spec());
         when(analyzeService.analyze(any(), eq(null))).thenReturn(Result.ok(sampleResult()));
-        when(interpretationRenderer.render(any())).thenReturn("요약");
 
         ResponseEntity<?> response = analyzeController.analyze(request, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         AnalyzeResponseDto body = assertResponseBody(response);
-        assertEquals(AnalyzeScenario.BULLISH_TREND_CONTINUATION, body.scenario());
-        assertEquals("요약", body.summary());
+        assertEquals("상승", body.trend());
+        assertEquals("상단", body.location());
+        assertEquals("매수 우세", body.pressure());
         verify(analyzeService).analyze(any(AnalyzeRequest.class), eq(null));
     }
 
@@ -79,14 +87,14 @@ public class AnalyzeControllerTest {
 
         when(authentication.getPrincipal()).thenReturn(oAuth2User);
         when(oAuth2User.getAttributes()).thenReturn(Map.of("userId", userId.toString()));
+        when(analyzeSpecResolver.resolve(TimeResolution.M15)).thenReturn(spec());
         when(analyzeService.analyze(any(), eq(userId))).thenReturn(Result.ok(sampleResult()));
-        when(interpretationRenderer.render(any())).thenReturn("요약");
 
         ResponseEntity<?> response = analyzeController.analyze(request, authentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         AnalyzeResponseDto body = assertResponseBody(response);
-        assertEquals("요약", body.summary());
+        assertEquals("매수 우세", body.pressure());
         ArgumentCaptor<AnalyzeRequest> captor = ArgumentCaptor.forClass(AnalyzeRequest.class);
         verify(analyzeService).analyze(captor.capture(), eq(userId));
         assertEquals(TimeResolution.M15, captor.getValue().resolution());
@@ -129,14 +137,61 @@ public class AnalyzeControllerTest {
                 AnalyzeDirection.LONG);
     }
 
-    private AnalyzeInterpretation sampleResult() {
-        return new AnalyzeInterpretation(
+    private AnalyzeResult sampleResult() {
+        return new AnalyzeResult(
                 AnalyzeDirection.LONG,
-                AnalyzeScenario.BULLISH_TREND_CONTINUATION,
-                "CONTINUATION",
-                "HIGH",
-                "MEDIUM",
-                "matrix-v1");
+                42.0,
+                12.0,
+                68.0,
+                35.0,
+                0.35,
+                0.21);
+    }
+
+    private AnalyzeSpec spec() {
+        return new AnalyzeSpec(
+                new AnalyzeEngineParams(
+                        1e-9,
+                        20,
+                        10,
+                        30,
+                        0.1,
+                        1e-6,
+                        20,
+                        30,
+                        3.0,
+                        1.45,
+                        0.65,
+                        20,
+                        14,
+                        100,
+                        5,
+                        20,
+                        5,
+                        0.6,
+                        0.3,
+                        0.1,
+                        0.5,
+                        1.5),
+                new AnalyzeBandSpec(
+                        new AnalyzeBandSet<>(java.util.List.of(
+                                new AnalyzeBandRange<>(TrendBand.STRONG_BEAR, -100.0, -60.0),
+                                new AnalyzeBandRange<>(TrendBand.BEAR, -60.0, -20.0),
+                                new AnalyzeBandRange<>(TrendBand.NEUTRAL, -20.0, 20.0),
+                                new AnalyzeBandRange<>(TrendBand.BULL, 20.0, 60.0),
+                                new AnalyzeBandRange<>(TrendBand.STRONG_BULL, 60.0, 100.000001))),
+                        new AnalyzeBandSet<>(java.util.List.of(
+                                new AnalyzeBandRange<>(LocationBand.LOWEST, 0.0, 20.0),
+                                new AnalyzeBandRange<>(LocationBand.LOWER, 20.0, 40.0),
+                                new AnalyzeBandRange<>(LocationBand.MIDDLE, 40.0, 60.0),
+                                new AnalyzeBandRange<>(LocationBand.UPPER, 60.0, 80.0),
+                                new AnalyzeBandRange<>(LocationBand.HIGHEST, 80.0, 100.000001))),
+                        new AnalyzeBandSet<>(java.util.List.of(
+                                new AnalyzeBandRange<>(PressureBand.STRONG_SELL, -100.0, -60.0),
+                                new AnalyzeBandRange<>(PressureBand.SELL, -60.0, -20.0),
+                                new AnalyzeBandRange<>(PressureBand.NEUTRAL, -20.0, 20.0),
+                                new AnalyzeBandRange<>(PressureBand.BUY, 20.0, 60.0),
+                                new AnalyzeBandRange<>(PressureBand.STRONG_BUY, 60.0, 100.000001)))));
     }
 
     private AnalyzeResponseDto assertResponseBody(ResponseEntity<?> response) {

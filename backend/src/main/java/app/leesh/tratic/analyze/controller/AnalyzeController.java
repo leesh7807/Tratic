@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
-import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
+import app.leesh.tratic.analyze.domain.AnalyzeResult;
+import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
@@ -34,11 +34,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @Validated
 public class AnalyzeController {
     private final AnalyzeService analyzeService;
-    private final AnalyzeInterpretationRenderer interpretationRenderer;
+    private final AnalyzeSpecResolver analyzeSpecResolver;
 
-    public AnalyzeController(AnalyzeService analyzeService, AnalyzeInterpretationRenderer interpretationRenderer) {
+    public AnalyzeController(AnalyzeService analyzeService, AnalyzeSpecResolver analyzeSpecResolver) {
         this.analyzeService = analyzeService;
-        this.interpretationRenderer = interpretationRenderer;
+        this.analyzeSpecResolver = analyzeSpecResolver;
     }
 
     @PostMapping
@@ -65,17 +65,19 @@ public class AnalyzeController {
 
         UUID authenticatedUserId = resolveUserId(authentication);
         return analyzeService.analyze(analyzeRequest, authenticatedUserId)
-                .map(this::toResponseDto)
+                .map(result -> toResponseDto(request, result))
                 .mapError(this::toApiError)
                 .fold(
                         ResponseEntity::ok,
                         this::toErrorResponse);
     }
 
-    private AnalyzeResponseDto toResponseDto(AnalyzeInterpretation value) {
+    private AnalyzeResponseDto toResponseDto(AnalyzeRequestDto request, AnalyzeResult value) {
+        var bands = analyzeSpecResolver.resolve(request.resolution()).bandSpec().resolve(value);
         return new AnalyzeResponseDto(
-                value.scenario(),
-                interpretationRenderer.render(value));
+                bands.trend().displayKo(),
+                bands.location().displayKo(),
+                bands.pressure().displayKo());
     }
 
     private ApiError toApiError(AnalyzeFailure failure) {
