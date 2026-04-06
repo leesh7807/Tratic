@@ -26,9 +26,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
-import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
+import app.leesh.tratic.analyze.domain.classification.ClassifiedAnalyzeResult;
+import app.leesh.tratic.analyze.domain.classification.LocationBand;
+import app.leesh.tratic.analyze.domain.classification.PressureBand;
+import app.leesh.tratic.analyze.domain.classification.TrendBand;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
@@ -48,9 +49,6 @@ public class AnalyzeControllerTest {
     @Mock
     private OAuth2User oAuth2User;
 
-    @Mock
-    private AnalyzeInterpretationRenderer interpretationRenderer;
-
     @InjectMocks
     private AnalyzeController analyzeController;
 
@@ -60,14 +58,14 @@ public class AnalyzeControllerTest {
         AnalyzeRequestDto request = requestDto();
 
         when(analyzeService.analyze(any(), eq(null))).thenReturn(Result.ok(sampleResult()));
-        when(interpretationRenderer.render(any())).thenReturn("요약");
 
         ResponseEntity<?> response = analyzeController.analyze(request, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         AnalyzeResponseDto body = assertResponseBody(response);
-        assertEquals(AnalyzeScenario.BULLISH_TREND_CONTINUATION, body.scenario());
-        assertEquals("요약", body.summary());
+        assertEquals("상승", body.trend());
+        assertEquals("상단", body.location());
+        assertEquals("매수 우세", body.pressure());
         verify(analyzeService).analyze(any(AnalyzeRequest.class), eq(null));
     }
 
@@ -80,13 +78,12 @@ public class AnalyzeControllerTest {
         when(authentication.getPrincipal()).thenReturn(oAuth2User);
         when(oAuth2User.getAttributes()).thenReturn(Map.of("userId", userId.toString()));
         when(analyzeService.analyze(any(), eq(userId))).thenReturn(Result.ok(sampleResult()));
-        when(interpretationRenderer.render(any())).thenReturn("요약");
 
         ResponseEntity<?> response = analyzeController.analyze(request, authentication);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         AnalyzeResponseDto body = assertResponseBody(response);
-        assertEquals("요약", body.summary());
+        assertEquals("매수 우세", body.pressure());
         ArgumentCaptor<AnalyzeRequest> captor = ArgumentCaptor.forClass(AnalyzeRequest.class);
         verify(analyzeService).analyze(captor.capture(), eq(userId));
         assertEquals(TimeResolution.M15, captor.getValue().resolution());
@@ -129,14 +126,11 @@ public class AnalyzeControllerTest {
                 AnalyzeDirection.LONG);
     }
 
-    private AnalyzeInterpretation sampleResult() {
-        return new AnalyzeInterpretation(
-                AnalyzeDirection.LONG,
-                AnalyzeScenario.BULLISH_TREND_CONTINUATION,
-                "CONTINUATION",
-                "HIGH",
-                "MEDIUM",
-                "matrix-v1");
+    private ClassifiedAnalyzeResult sampleResult() {
+        return new ClassifiedAnalyzeResult(
+                TrendBand.BULL,
+                LocationBand.UPPER,
+                PressureBand.BUY);
     }
 
     private AnalyzeResponseDto assertResponseBody(ResponseEntity<?> response) {

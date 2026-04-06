@@ -7,10 +7,12 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
+import app.leesh.tratic.analyze.domain.AnalyzeEngine;
 import app.leesh.tratic.analyze.domain.AnalyzeResult;
-import app.leesh.tratic.analyze.domain.AnalysisEngine;
-import app.leesh.tratic.analyze.domain.AnalysisEngineParams;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
+import app.leesh.tratic.analyze.domain.AnalyzeSpec;
+import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
+import app.leesh.tratic.analyze.domain.classification.AnalyzeClassificationSpec;
+import app.leesh.tratic.analyze.domain.classification.ClassifiedAnalyzeResult;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.ChartSignature;
@@ -23,28 +25,26 @@ import app.leesh.tratic.shared.Result;
 @Service
 public class AnalyzeService {
     private final ChartService chartService;
-    private final AnalyzePolicy analyzePolicy;
-    private final AnalysisEnginePolicy analysisEnginePolicy;
-    private final AnalysisResultRepository analysisResultRepository;
-    private final AnalyzeInterpreter analyzeInterpreter;
+    private final AnalyzeFetchCountConfig analyzeFetchCountConfig;
+    private final AnalyzeEngine analyzeEngine;
+    private final AnalyzeSpecResolver analyzeSpecResolver;
+    private final AnalyzeResultRepository analyzeResultRepository;
 
-    public AnalyzeService(ChartService chartService, AnalyzePolicy analyzePolicy,
-            AnalysisEnginePolicy analysisEnginePolicy,
-            AnalysisResultRepository analysisResultRepository,
-            AnalyzeInterpreter analyzeInterpreter) {
+    public AnalyzeService(ChartService chartService, AnalyzeFetchCountConfig analyzeFetchCountConfig,
+            AnalyzeEngine analyzeEngine,
+            AnalyzeSpecResolver analyzeSpecResolver,
+            AnalyzeResultRepository analyzeResultRepository) {
         this.chartService = chartService;
-        this.analyzePolicy = analyzePolicy;
-        this.analysisEnginePolicy = analysisEnginePolicy;
-        this.analysisResultRepository = analysisResultRepository;
-        this.analyzeInterpreter = analyzeInterpreter;
+        this.analyzeFetchCountConfig = analyzeFetchCountConfig;
+        this.analyzeEngine = analyzeEngine;
+        this.analyzeSpecResolver = analyzeSpecResolver;
+        this.analyzeResultRepository = analyzeResultRepository;
     }
 
-    public Result<AnalyzeInterpretation, AnalyzeFailure> analyze(AnalyzeRequest request, UUID authenticatedUserId) {
-        TimeResolution resolution = request.resolution();
-        AnalysisEngineParams engineParams = analysisEnginePolicy.resolve(resolution);
+    public Result<ClassifiedAnalyzeResult, AnalyzeFailure> analyze(AnalyzeRequest request, UUID authenticatedUserId) {
         return collectCandles(request)
-                .flatMap(candles -> analyzeCandles(candles, request.direction(), engineParams))
-                .map(analyzed -> persistAndInterpret(authenticatedUserId, request, analyzed));
+                .flatMap(candles -> analyzeCandles(candles, request.resolution(), request.direction()))
+                .map(analyzed -> classify(request, persist(authenticatedUserId, request, analyzed)));
     }
 
     private Result<List<Candle>, AnalyzeFailure> collectCandles(AnalyzeRequest request) {
@@ -52,32 +52,37 @@ public class AnalyzeService {
         ChartSignature signature = new ChartSignature(request.market(), new Symbol(request.symbol()), resolution);
         Instant asOf = request.entryAt().minus(resolution.toDuration());
 
-        return chartService.collectChart(new ChartFetchRequest(signature, asOf, analyzePolicy.fetchCandleCount()))
+        return chartService.collectChart(
+                new ChartFetchRequest(signature, asOf, analyzeFetchCountConfig.fetchCandleCount()))
                 .mapError(cause -> (AnalyzeFailure) new AnalyzeFailure.ChartDataUnavailable(cause))
                 .map(chart -> chart.candlesBeforeBucketOf(request.entryAt()));
     }
 
-    private Result<AnalyzeResult, AnalyzeFailure> analyzeCandles(List<Candle> candles, AnalyzeDirection direction,
-            AnalysisEngineParams engineParams) {
-        int minimumCandles = AnalysisEngine.minimumRequiredCandles(engineParams);
+    private Result<AnalyzeResult, AnalyzeFailure> analyzeCandles(List<Candle> candles, TimeResolution resolution,
+            AnalyzeDirection direction) {
+        int minimumCandles = analyzeEngine.minimumRequiredCandles(resolution);
         if (candles.size() < minimumCandles) {
             return Result.err(new AnalyzeFailure.InsufficientCandles(minimumCandles, candles.size()));
         }
 
         try {
-            return Result.ok(AnalysisEngine.analyze(candles, direction, engineParams));
+            return Result.ok(analyzeEngine.analyze(candles, resolution, direction));
         } catch (IllegalArgumentException ex) {
             return Result.err(new AnalyzeFailure.InvalidInput(ex.getMessage()));
         }
     }
 
-    private AnalyzeInterpretation persistAndInterpret(UUID authenticatedUserId, AnalyzeRequest request, AnalyzeResult analyzed) {
-        AnalyzeInterpretation interpretation = analyzeInterpreter.interpret(analyzed);
-
+    private AnalyzeResult persist(UUID authenticatedUserId, AnalyzeRequest request, AnalyzeResult analyzed) {
         if (authenticatedUserId != null) {
-            analysisResultRepository.save(authenticatedUserId, request, analyzed, interpretation);
+            analyzeResultRepository.save(authenticatedUserId, request, analyzed);
         }
 
-        return interpretation;
+        return analyzed;
+    }
+
+    private ClassifiedAnalyzeResult classify(AnalyzeRequest request, AnalyzeResult analyzed) {
+        AnalyzeSpec spec = analyzeSpecResolver.resolve(request.resolution());
+        AnalyzeClassificationSpec classificationSpec = spec.classificationSpec();
+        return classificationSpec.classify(analyzed);
     }
 }

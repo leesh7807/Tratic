@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.UUID;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
 import app.leesh.tratic.chart.domain.Market;
 import app.leesh.tratic.chart.domain.TimeResolution;
 import jakarta.persistence.Column;
@@ -22,7 +21,7 @@ import jakarta.persistence.Table;
 @Table(name = "analysis_result", indexes = {
         @Index(name = "idx_analysis_result_user_id", columnList = "user_id")
 })
-public class AnalysisResultEntity {
+public class AnalyzeResultEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,40 +54,22 @@ public class AnalysisResultEntity {
     @Column(name = "trend_score", nullable = false)
     private double trendScore;
 
-    @Column(name = "volatility_score", nullable = false)
-    private double volatilityScore;
-
     @Column(name = "location_score", nullable = false)
     private double locationScore;
 
     @Column(name = "pressure_score", nullable = false)
     private double pressureScore;
 
-    @Column(name = "pressure_raw", nullable = false)
-    private double pressureRaw;
-
-    @Column(name = "pressure_view", nullable = false)
-    private double pressureView;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "scenario", nullable = false, length = 60)
-    private AnalyzeScenario scenario;
-
-    @Column(name = "policy_version", nullable = false, length = 50)
-    private String policyVersion;
-
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    protected AnalysisResultEntity() {
+    protected AnalyzeResultEntity() {
     }
 
-    public AnalysisResultEntity(UUID userId, Market market, String symbol, TimeResolution resolution, Instant entryAt,
+    public AnalyzeResultEntity(UUID userId, Market market, String symbol, TimeResolution resolution, Instant entryAt,
             BigDecimal entryPrice,
             AnalyzeDirection direction,
-            double trendScore, double volatilityScore, double locationScore,
-            double pressureScore, double pressureRaw, double pressureView, AnalyzeScenario scenario,
-            String policyVersion, Instant createdAt) {
+            double trendScore, double locationScore, double pressureScore, Instant createdAt) {
         this.userId = userId;
         this.market = market;
         this.symbol = symbol;
@@ -97,13 +78,8 @@ public class AnalysisResultEntity {
         this.entryPrice = entryPrice;
         this.direction = direction;
         this.trendScore = trendScore;
-        this.volatilityScore = volatilityScore;
         this.locationScore = locationScore;
         this.pressureScore = pressureScore;
-        this.pressureRaw = pressureRaw;
-        this.pressureView = pressureView;
-        this.scenario = scenario;
-        this.policyVersion = policyVersion;
         this.createdAt = createdAt;
     }
 }

@@ -15,8 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
-import app.leesh.tratic.analyze.service.AnalyzeInterpretationRenderer;
+import app.leesh.tratic.analyze.domain.classification.ClassifiedAnalyzeResult;
 import app.leesh.tratic.analyze.service.AnalyzeRequest;
 import app.leesh.tratic.analyze.service.AnalyzeService;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
@@ -34,11 +33,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @Validated
 public class AnalyzeController {
     private final AnalyzeService analyzeService;
-    private final AnalyzeInterpretationRenderer interpretationRenderer;
 
-    public AnalyzeController(AnalyzeService analyzeService, AnalyzeInterpretationRenderer interpretationRenderer) {
+    public AnalyzeController(AnalyzeService analyzeService) {
         this.analyzeService = analyzeService;
-        this.interpretationRenderer = interpretationRenderer;
     }
 
     @PostMapping
@@ -72,10 +69,8 @@ public class AnalyzeController {
                         this::toErrorResponse);
     }
 
-    private AnalyzeResponseDto toResponseDto(AnalyzeInterpretation value) {
-        return new AnalyzeResponseDto(
-                value.scenario(),
-                interpretationRenderer.render(value));
+    private AnalyzeResponseDto toResponseDto(ClassifiedAnalyzeResult classified) {
+        return AnalyzeResponseDto.from(classified);
     }
 
     private ApiError toApiError(AnalyzeFailure failure) {

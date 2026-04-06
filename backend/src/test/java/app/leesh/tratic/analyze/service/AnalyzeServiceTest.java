@@ -2,6 +2,7 @@ package app.leesh.tratic.analyze.service;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,9 +21,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import app.leesh.tratic.analyze.domain.AnalyzeDirection;
-import app.leesh.tratic.analyze.domain.AnalysisEngineParams;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeInterpretation;
-import app.leesh.tratic.analyze.domain.interpretation.AnalyzeScenario;
+import app.leesh.tratic.analyze.domain.AnalyzeEngine;
+import app.leesh.tratic.analyze.domain.AnalyzeEngineParams;
+import app.leesh.tratic.analyze.domain.AnalyzeSpec;
+import app.leesh.tratic.analyze.domain.AnalyzeSpecResolver;
+import app.leesh.tratic.analyze.domain.classification.AnalyzeClassificationSpec;
+import app.leesh.tratic.analyze.domain.classification.ClassifiedAnalyzeResult;
+import app.leesh.tratic.analyze.domain.classification.LocationBand;
+import app.leesh.tratic.analyze.domain.classification.PressureBand;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRange;
+import app.leesh.tratic.analyze.domain.classification.ScoreClassificationRanges;
+import app.leesh.tratic.analyze.domain.classification.TrendBand;
 import app.leesh.tratic.analyze.service.error.AnalyzeFailure;
 import app.leesh.tratic.chart.domain.Candle;
 import app.leesh.tratic.chart.domain.CandleSeries;
@@ -45,16 +54,16 @@ public class AnalyzeServiceTest {
     private ChartService chartService;
 
     @Mock
-    private AnalyzePolicy analyzePolicy;
+    private AnalyzeFetchCountConfig analyzeFetchCountConfig;
 
     @Mock
-    private AnalysisEnginePolicy analysisEnginePolicy;
+    private AnalyzeEngine analyzeEngine;
 
     @Mock
-    private AnalysisResultRepository analysisResultRepository;
+    private AnalyzeSpecResolver analyzeSpecResolver;
 
     @Mock
-    private AnalyzeInterpreter analyzeInterpreter;
+    private AnalyzeResultRepository analyzeResultRepository;
 
     @InjectMocks
     private AnalyzeService analyzeService;
@@ -64,15 +73,18 @@ public class AnalyzeServiceTest {
     public void analyze_saves_when_authenticated_user() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
-        when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
-        when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
+        when(analyzeFetchCountConfig.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.BINANCE, "BTCUSDT")));
-        when(analyzeInterpreter.interpret(any())).thenReturn(sampleInterpretation());
+        when(analyzeEngine.minimumRequiredCandles(RESOLUTION)).thenReturn(105);
+        when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.LONG)))
+                .thenReturn(sampleAnalyzeResult(AnalyzeDirection.LONG));
 
-        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
 
         assertInstanceOf(Result.Ok.class, result);
-        verify(analysisResultRepository).save(any(), any(), any(), any());
+        verify(analyzeResultRepository).save(any(), any(), any());
     }
 
     @Test
@@ -80,15 +92,18 @@ public class AnalyzeServiceTest {
     public void analyze_does_not_save_when_guest_user() {
         AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
-        when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
-        when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
+        when(analyzeFetchCountConfig.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.UPBIT, "KRW-BTC")));
-        when(analyzeInterpreter.interpret(any())).thenReturn(sampleInterpretation());
+        when(analyzeEngine.minimumRequiredCandles(RESOLUTION)).thenReturn(105);
+        when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.LONG)))
+                .thenReturn(sampleAnalyzeResult(AnalyzeDirection.LONG));
 
-        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
         assertInstanceOf(Result.Ok.class, result);
-        verify(analysisResultRepository, never()).save(any(), any(), any(), any());
+        verify(analyzeResultRepository, never()).save(any(), any(), any());
     }
 
     @Test
@@ -96,12 +111,15 @@ public class AnalyzeServiceTest {
     public void analyze_uses_long_direction_from_request() {
         AnalyzeRequest req = request(Market.UPBIT, "KRW-BTC", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
-        when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
-        when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
+        when(analyzeFetchCountConfig.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.UPBIT, "KRW-BTC")));
-        when(analyzeInterpreter.interpret(any())).thenReturn(sampleInterpretation());
+        when(analyzeEngine.minimumRequiredCandles(RESOLUTION)).thenReturn(105);
+        when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.LONG)))
+                .thenReturn(sampleAnalyzeResult(AnalyzeDirection.LONG));
 
-        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
         assertInstanceOf(Result.Ok.class, result);
     }
@@ -111,12 +129,15 @@ public class AnalyzeServiceTest {
     public void analyze_uses_short_direction_from_request() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.SHORT);
 
-        when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
-        when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
+        when(analyzeFetchCountConfig.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleChart(Market.BINANCE, "BTCUSDT")));
-        when(analyzeInterpreter.interpret(any())).thenReturn(shortInterpretation());
+        when(analyzeEngine.minimumRequiredCandles(RESOLUTION)).thenReturn(105);
+        when(analyzeEngine.analyze(any(), eq(RESOLUTION), eq(AnalyzeDirection.SHORT)))
+                .thenReturn(sampleAnalyzeResult(AnalyzeDirection.SHORT));
 
-        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, null);
+        when(analyzeSpecResolver.resolve(RESOLUTION)).thenReturn(spec());
+
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, null);
 
         assertInstanceOf(Result.Ok.class, result);
     }
@@ -126,13 +147,13 @@ public class AnalyzeServiceTest {
     public void analyze_maps_chart_failure() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
-        when(analyzePolicy.fetchCandleCount()).thenReturn(240L);
+        when(analyzeFetchCountConfig.fetchCandleCount()).thenReturn(240L);
         when(chartService.collectChart(any())).thenReturn(Result.err(new ChartFetchFailure.RateLimited(Market.BINANCE, null)));
 
-        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
 
         assertInstanceOf(Result.Err.class, result);
-        AnalyzeFailure failure = ((Result.Err<AnalyzeInterpretation, AnalyzeFailure>) result).error();
+        AnalyzeFailure failure = ((Result.Err<ClassifiedAnalyzeResult, AnalyzeFailure>) result).error();
         assertInstanceOf(AnalyzeFailure.ChartDataUnavailable.class, failure);
     }
 
@@ -141,35 +162,15 @@ public class AnalyzeServiceTest {
     public void analyze_returns_insufficient_candles_when_collected_data_is_too_short() {
         AnalyzeRequest req = request(Market.BINANCE, "BTCUSDT", ENTRY_AT, "100", AnalyzeDirection.LONG);
 
-        when(analyzePolicy.fetchCandleCount()).thenReturn(120L);
-        when(analysisEnginePolicy.resolve(RESOLUTION)).thenReturn(defaultEngineParams());
+        when(analyzeFetchCountConfig.fetchCandleCount()).thenReturn(120L);
         when(chartService.collectChart(any())).thenReturn(Result.ok(sampleShortChart(Market.BINANCE, "BTCUSDT")));
+        when(analyzeEngine.minimumRequiredCandles(RESOLUTION)).thenReturn(105);
 
-        Result<AnalyzeInterpretation, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
+        Result<ClassifiedAnalyzeResult, AnalyzeFailure> result = analyzeService.analyze(req, UUID.randomUUID());
 
         assertInstanceOf(Result.Err.class, result);
-        AnalyzeFailure failure = ((Result.Err<AnalyzeInterpretation, AnalyzeFailure>) result).error();
+        AnalyzeFailure failure = ((Result.Err<ClassifiedAnalyzeResult, AnalyzeFailure>) result).error();
         assertInstanceOf(AnalyzeFailure.InsufficientCandles.class, failure);
-    }
-
-    private AnalyzeInterpretation sampleInterpretation() {
-        return new AnalyzeInterpretation(
-                AnalyzeDirection.LONG,
-                AnalyzeScenario.BULLISH_TREND_CONTINUATION,
-                "CONTINUATION",
-                "HIGH",
-                "MEDIUM",
-                "matrix-v1");
-    }
-
-    private AnalyzeInterpretation shortInterpretation() {
-        return new AnalyzeInterpretation(
-                AnalyzeDirection.SHORT,
-                AnalyzeScenario.BEARISH_TREND_CONTINUATION,
-                "CONTINUATION",
-                "HIGH",
-                "MEDIUM",
-                "matrix-v1");
     }
 
     private Chart sampleChart(Market market, String symbol) {
@@ -212,9 +213,40 @@ public class AnalyzeServiceTest {
                 direction);
     }
 
-    // Mirrors the current analyze-engine.yml defaults as hard-coded test data.
-    private AnalysisEngineParams defaultEngineParams() {
-        return new AnalysisEngineParams(
+    private app.leesh.tratic.analyze.domain.AnalyzeResult sampleAnalyzeResult(AnalyzeDirection direction) {
+        return new app.leesh.tratic.analyze.domain.AnalyzeResult(
+                direction,
+                42.0,
+                68.0,
+                35.0);
+    }
+
+    private AnalyzeSpec spec() {
+        return new AnalyzeSpec(
+                defaultParams(),
+                new AnalyzeClassificationSpec(
+                        new ScoreClassificationRanges<>(List.of(
+                                new ScoreClassificationRange<>(TrendBand.STRONG_BEAR, -100.0, -60.0),
+                                new ScoreClassificationRange<>(TrendBand.BEAR, -60.0, -20.0),
+                                new ScoreClassificationRange<>(TrendBand.NEUTRAL, -20.0, 20.0),
+                                new ScoreClassificationRange<>(TrendBand.BULL, 20.0, 60.0),
+                                new ScoreClassificationRange<>(TrendBand.STRONG_BULL, 60.0, 100.000001))),
+                        new ScoreClassificationRanges<>(List.of(
+                                new ScoreClassificationRange<>(LocationBand.LOWEST, 0.0, 20.0),
+                                new ScoreClassificationRange<>(LocationBand.LOWER, 20.0, 40.0),
+                                new ScoreClassificationRange<>(LocationBand.MIDDLE, 40.0, 60.0),
+                                new ScoreClassificationRange<>(LocationBand.UPPER, 60.0, 80.0),
+                                new ScoreClassificationRange<>(LocationBand.HIGHEST, 80.0, 100.000001))),
+                        new ScoreClassificationRanges<>(List.of(
+                                new ScoreClassificationRange<>(PressureBand.STRONG_SELL, -100.0, -60.0),
+                                new ScoreClassificationRange<>(PressureBand.SELL, -60.0, -20.0),
+                                new ScoreClassificationRange<>(PressureBand.NEUTRAL, -20.0, 20.0),
+                                new ScoreClassificationRange<>(PressureBand.BUY, 20.0, 60.0),
+                                new ScoreClassificationRange<>(PressureBand.STRONG_BUY, 60.0, 100.000001)))));
+    }
+
+    private AnalyzeEngineParams defaultParams() {
+        return new AnalyzeEngineParams(
                 1e-9,
                 20,
                 10,

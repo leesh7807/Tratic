@@ -1,6 +1,6 @@
 package app.leesh.tratic.analyze.domain;
 
-public record AnalysisEngineParams(
+public record AnalyzeEngineParams(
         double epsilon,
         int trendN,
         int trendFastEma,
@@ -24,7 +24,7 @@ public record AnalysisEngineParams(
         double pressureVolumeWeightMin,
         double pressureVolumeWeightMax) {
 
-    public AnalysisEngineParams {
+    public AnalyzeEngineParams {
         if (epsilon <= 0.0) {
             throw new IllegalArgumentException("epsilon must be positive");
         }
